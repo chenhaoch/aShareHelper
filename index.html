@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A股盯盘</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1>📊 A股盯盘 <span class="time" id="headerTime">--:--:--</span></h1>
+        </header>
+
+        <div class="index-grid" id="indexGrid">
+            <div class="index-card" data-code="000001">
+                <div class="card-header">
+                    <span class="name">上证指数</span>
+                    <span><span class="value" id="val_000001">--</span><span class="sub" id="sub_000001"></span></span>
+                </div>
+                <canvas id="chart_000001"></canvas>
+                <div class="legend"></div>
+            </div>
+            <div class="index-card" data-code="399006">
+                <div class="card-header">
+                    <span class="name">创业板指</span>
+                    <span><span class="value" id="val_399006">--</span><span class="sub" id="sub_399006"></span></span>
+                </div>
+                <canvas id="chart_399006"></canvas>
+                <div class="legend"></div>
+            </div>
+            <div class="index-card" data-code="000688">
+                <div class="card-header">
+                    <span class="name">科创50</span>
+                    <span><span class="value" id="val_000688">--</span><span class="sub" id="sub_000688"></span></span>
+                </div>
+                <canvas id="chart_000688"></canvas>
+                <div class="legend"></div>
+            </div>
+            <div class="index-card" data-code="800004">
+                <div class="card-header">
+                    <span class="name">全A成交额</span>
+                    <span><span class="value" id="val_800004">--</span><span class="sub" id="sub_800004"></span></span>
+                </div>
+                <canvas id="chart_800004"></canvas>
+                <div class="legend"></div>
+            </div>
+        </div>
+
+        <div class="change-area">
+            <div class="change-panel" id="panelAuction">
+                <div class="panel-title">
+                    <span>🔥 竞价涨停</span>
+                    <span class="badge" id="auctionCount">0 条</span>
+                </div>
+                <div class="change-list" id="auctionList">
+                    <div class="change-empty">暂无竞价涨停数据</div>
+                </div>
+            </div>
+            <div class="change-panel" id="panelIntraday">
+                <div class="panel-title">
+                    <span>⚡ 盘中异动</span>
+                    <span class="badge" id="intradayCount">0 条</span>
+                </div>
+                <div class="change-list" id="intradayList">
+                    <div class="change-empty">暂无盘中异动数据</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS 模块：按依赖顺序加载 -->
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/index-display.js"></script>
+    <script src="js/sse-client.js"></script>
+    <script src="js/stock-change.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
