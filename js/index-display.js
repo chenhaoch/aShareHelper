@@ -20,34 +20,30 @@ function updateIndexDisplay(code, data) {
     }
 
     if (code === '800004') {
-        // 全A: 分离今日/昨日，增量合并（按时间去重）
-        const incomingToday = [];
-        const incomingYesterday = [];
-        // 按时间字符串去重
-        const todayTimeKeys = new Set(chart.data.today.map(d => parseTrendTimeStr(d)));
-        const yesterdayTimeKeys = new Set(chart.data.yesterday.map(d => parseTrendTimeStr(d)));
+        // 全A: 分离今日/昨日，按时间合并（重复时间用最新数据覆盖）
+        // 建立时间→数据映射
+        const todayMap = {};
+        for (const d of chart.data.today) {
+            todayMap[parseTrendTimeStr(d)] = d;
+        }
+        const yesterdayMap = {};
+        for (const d of chart.data.yesterday) {
+            yesterdayMap[parseTrendTimeStr(d)] = d;
+        }
 
         for (const d of trendsData) {
             const t = parseTrendTimeStr(d);
+            if (!t) continue;
             if (isTodayTrend(d)) {
-                if (!todayTimeKeys.has(t)) {
-                    incomingToday.push(d);
-                    todayTimeKeys.add(t);
-                }
+                todayMap[t] = d; // 覆盖或新增
             } else {
-                if (!yesterdayTimeKeys.has(t)) {
-                    incomingYesterday.push(d);
-                    yesterdayTimeKeys.add(t);
-                }
+                yesterdayMap[t] = d;
             }
         }
 
-        chart.data.today = chart.data.today.concat(incomingToday);
-        chart.data.yesterday = chart.data.yesterday.concat(incomingYesterday);
-
-        // 按时间排序
-        chart.data.today.sort((a, b) => parseTrendTimeStr(a).localeCompare(parseTrendTimeStr(b)));
-        chart.data.yesterday.sort((a, b) => parseTrendTimeStr(a).localeCompare(parseTrendTimeStr(b)));
+        // 转回数组并排序
+        chart.data.today = Object.values(todayMap).sort((a, b) => parseTrendTimeStr(a).localeCompare(parseTrendTimeStr(b)));
+        chart.data.yesterday = Object.values(yesterdayMap).sort((a, b) => parseTrendTimeStr(a).localeCompare(parseTrendTimeStr(b)));
 
         console.log(`[全A] 今日 ${chart.data.today.length} 条, 昨日 ${chart.data.yesterday.length} 条`);
 
