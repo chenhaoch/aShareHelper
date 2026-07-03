@@ -252,9 +252,11 @@ body {
     font-size: 13px;
 }
 .text-up {
+    font-weight: bold;
     color: #e5474a;
 }
 .text-down {
+    font-weight: bold;
     color: #2d9b4e;
 }
 .text-flat {

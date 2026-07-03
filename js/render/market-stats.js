@@ -266,7 +266,7 @@
         if (titleEl && ztSorted.length > 0) {
             const lastZt = ztSorted[ztSorted.length - 1].value;
             const lastDt = dtSorted.length > 0 ? dtSorted[dtSorted.length - 1].value : 0;
-            titleEl.innerHTML = `📈 涨跌停趋势 <span class="badge"><span class="text-up">${lastZt}</span>:<span class="text-down">${lastDt}</span></span>`;
+            titleEl.innerHTML = `📈 涨跌停趋势 <span class="badge"><span class="text-up">${lastZt}</span> : <span class="text-down">${lastDt}</span></span>`;
         }
     }
 
