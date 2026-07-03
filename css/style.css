@@ -65,12 +65,17 @@ body {
     font-weight: 400;
     color: #86909c;
 }
-.index-card canvas {
+.index-card .chart-container {
     width: 100%;
     height: 200px;
     flex-shrink: 0;
     border-radius: 3px;
     background: #fafafa;
+    position: relative;
+    overflow: hidden;
+}
+.index-card .chart-container .sub-chart {
+    pointer-events: none;
 }
 .index-card .legend {
     display: none;
