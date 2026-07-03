@@ -107,12 +107,12 @@ async function getJSONPData(url) {
  * 从东方财富接口加载异动数据
  * 轮询机制（每5秒）保证了不同时刻的数据都能被捕获
  */
-async function loadStockChange() {
+async function loadStockChange(index = 0) {
     const t = Date.now();
     const type = '8201,8202,8193,4,32,64,8204,8203,8194,8,16,128';
     const cb = `jQuery35106807083396247275_${t}`;
-    const pageindex = 0;
-    const pagesize = 100;
+    const pageindex = index;
+    const pagesize = 64;
     const dpt = 'wzchanges';
     const ut = '7eea3edcaed734bea9cbfc24409ed989';
     const url =
