@@ -69,11 +69,14 @@ function updateIndexDisplay(code, data) {
         chart.todayCumulative = todayCum;
         chart.yesterdayCumulative = yesterdayCum;
 
-        // 更新最新累计值，以及相对昨天同一时间的差额
+        // 更新最新累计值、相对昨天同一时间的差额、以及今日预估成交额
         const lastToday = todayCum.length > 0 ? todayCum[todayCum.length - 1] : null;
+        const lastYest = yesterdayCum.length > 0 ? yesterdayCum[yesterdayCum.length - 1] : null;
         const valEl = document.getElementById('val_800004');
         const subEl = document.getElementById('sub_800004');
-        if (lastToday) {
+        // 更新标题（显示预估全天成交额）
+        const nameEl = document.querySelector('.index-card[data-code="800004"] .name');
+        if (lastToday && lastYest) {
             valEl.textContent = formatAmount(lastToday.cumAmount);
             // 查找昨天同一时间的累计值
             const yestMap = {};
@@ -86,12 +89,18 @@ function updateIndexDisplay(code, data) {
                 const sign = diff > 0 ? '+' : '';
                 const cls = diff > 0 ? 'text-up' : (diff < 0 ? 'text-down' : 'text-flat');
                 subEl.innerHTML = `<span class="${cls}">${sign}${(diff/1e8).toFixed(2)}亿</span>`;
+                // 今日预估成交额 = 昨日总成交额 + 当前差额
+                const yestTotal = lastYest.cumAmount;
+                const estimatedTotal = yestTotal + diff;
+                nameEl.textContent = `全A成交额 预估${formatAmount(estimatedTotal)}`;
             } else {
                 subEl.textContent = '';
+                nameEl.textContent = `全A成交额`;
             }
         } else {
             valEl.textContent = '--';
             subEl.textContent = '';
+            nameEl.textContent = `全A成交额`;
         }
 
         drawTrendChart('chart_800004', null, chart.color, true, {
