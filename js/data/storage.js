@@ -1,77 +1,17 @@
 // ============================================================
-//  本地存储模块 — 缓存昨日数据、竞价数据
-//  使用 localStorage 减少重复请求
+//  本地存储模块 — 竞价数据持久化
+//  页面刷新后竞价涨停/跌停数据不丢失
 // ============================================================
 
 (function () {
     'use strict';
 
     const STORAGE_KEYS = {
-        YESTERDAY_AMOUNT: 'ashare_yesterday_amount',  // 昨日成交额累计数据
-        AUCTION_DATA: 'ashare_auction_data',           // 竞价数据
-        CACHE_TIME: 'ashare_cache_time',               // 缓存时间戳
+        AUCTION_DATA: 'ashare_auction_data',  // 竞价数据
     };
 
     /** 缓存有效期（24小时） */
     const CACHE_TTL = 24 * 60 * 60 * 1000;
-
-    /**
-     * 存储昨日成交额数据
-     * @param {Array} yesterdayCumulative - [{ time, cumAmount }]
-     */
-    function saveYesterdayAmount(yesterdayCumulative) {
-        try {
-            const payload = {
-                data: yesterdayCumulative,
-                savedAt: Date.now(),
-                date: new Date().toISOString().slice(0, 10),
-            };
-            localStorage.setItem(STORAGE_KEYS.YESTERDAY_AMOUNT, JSON.stringify(payload));
-        } catch (e) {
-            console.warn('[Storage] 保存昨日成交额失败:', e);
-        }
-    }
-
-    /**
-     * 读取缓存的昨日成交额数据
-     * @returns {Array|null} 如果缓存有效返回数据，否则返回 null
-     */
-    function loadYesterdayAmount() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEYS.YESTERDAY_AMOUNT);
-            if (!raw) return null;
-
-            const payload = JSON.parse(raw);
-            const age = Date.now() - (payload.savedAt || 0);
-
-            // 检查是否过期（24小时）
-            if (age > CACHE_TTL) {
-                localStorage.removeItem(STORAGE_KEYS.YESTERDAY_AMOUNT);
-                return null;
-            }
-
-            // 检查是否同一天（如果已经跨天，缓存无效）
-            const today = new Date().toISOString().slice(0, 10);
-            if (payload.date !== today) {
-                // 如果缓存是昨天的数据，仍然可以使用（今天还没请求到昨日数据时）
-                // 不过需要标记是历史数据
-                return payload.data;
-            }
-
-            return payload.data;
-        } catch (e) {
-            console.warn('[Storage] 读取昨日成交额失败:', e);
-            return null;
-        }
-    }
-
-    /**
-     * 是否有有效的昨日成交额缓存
-     * @returns {boolean}
-     */
-    function hasYesterdayAmount() {
-        return loadYesterdayAmount() !== null;
-    }
 
     /**
      * 存储竞价涨停数据（持久化，页面刷新后保留）
@@ -136,7 +76,6 @@
     function restoreAuctionData() {
         const auctionData = loadAuctionData();
         if (auctionData.length > 0) {
-            // 去重后加入 persistentAuction
             const existing = new Set();
             for (const item of AppState.persistentAuction) {
                 const key = `${item.c || ''}_${item.tm || ''}`;
@@ -154,10 +93,9 @@
     }
 
     /**
-     * 监听竞价数据变化并自动保存
+     * 监听竞价数据变化并自动保存（每30秒检查一次）
      */
     function autoSaveAuction() {
-        // 每 30 秒检查一次竞价数据长度是否有变化，有则保存
         let lastLength = AppState.persistentAuction.length;
         setInterval(() => {
             const currentLength = AppState.persistentAuction.length;
@@ -173,10 +111,6 @@
     // ============================================================
 
     window.StorageManager = {
-        saveYesterdayAmount,
-        loadYesterdayAmount,
-        hasYesterdayAmount,
-
         saveAuctionData,
         loadAuctionData,
         restoreAuctionData,
