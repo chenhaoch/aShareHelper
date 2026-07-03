@@ -66,8 +66,9 @@ function calcAmountDiff(todayCum, yestCum) {
  * @param {boolean} isAmount - 是否为成交额图表
  * @param {object|null} compareData - 对比数据 (成交额图表使用: { todayCumulative, yesterdayCumulative })
  * @param {boolean} showMACD - 是否在底部显示 MACD (仅对价格指数生效)
+ * @param {number} prePrice - 昨日收盘价，用于显示涨幅（仅对价格指数生效）
  */
-function drawTrendChart(canvasId, data, color, isAmount = false, compareData = null, showMACD = false) {
+function drawTrendChart(canvasId, data, color, isAmount = false, compareData = null, showMACD = false, prePrice = 0) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -221,7 +222,7 @@ function drawTrendChart(canvasId, data, color, isAmount = false, compareData = n
         drawPriceLine(comparePoints, '#2d9b4e', 1.6);
     }
 
-    // 最新值标记
+    // 最新值标记（价格指数显示涨幅，成交额显示金额）
     if (points.length > 0) {
         const last = points[points.length - 1];
         const lx = getX(last.time);
@@ -237,8 +238,16 @@ function drawTrendChart(canvasId, data, color, isAmount = false, compareData = n
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        let label = last.value.toFixed(2);
-        if (isAmount) label = formatAmount(last.value);
+        let label;
+        if (isAmount) {
+            label = formatAmount(last.value);
+        } else if (prePrice > 0) {
+            const pct = ((last.value - prePrice) / prePrice * 100);
+            const sign = pct > 0 ? '+' : '';
+            label = `${sign}${pct.toFixed(2)}%`;
+        } else {
+            label = last.value.toFixed(2);
+        }
         ctx.fillText(label, lx + 6, ly - 2);
     }
 

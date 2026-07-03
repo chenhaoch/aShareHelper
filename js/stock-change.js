@@ -35,29 +35,55 @@ function isChangeAuctionTime(tm) {
 }
 
 /**
- * 格式化 info 数值显示
- * @param {string} rawInfo - 原始 info 字符串（如 "228067,200.15000,0.035437,45624142.95"）
- * @param {object} typeObj - CHANGE_TYPES 中的类型对象
+ * 格式化 info 数值显示，根据不同类型显示不同的信息
+ * @param {string} rawInfo - 原始 info 字符串
+ * @param {number} typeId - 异动类型 ID
  * @returns {string} 格式化后的显示文本
  */
-function formatChangeInfo(rawInfo, typeObj) {
-    // 提取第一个逗号前的值作为 info
-    var info = rawInfo.indexOf(",") >= 0 ? rawInfo.substring(0, rawInfo.indexOf(",")) : rawInfo;
-    if (!typeObj) return info;
-
-    if (typeObj.type === "sl") {
-        var num = Number(info);
-        if (num < 1e6) {
-            return (num / 100).toFixed(0) + "手";
-        } else {
-            return (num / 1e6).toFixed(2).slice(0, 4) + "万手";
+function formatChangeInfo(rawInfo, typeId) {
+    if (!rawInfo) return '';
+    const parts = rawInfo.split(',');
+    // type 4,8: 封涨停/封跌停 → 显示封单金额（封单股数 * 价格）
+    if (typeId === 4 || typeId === 8) {
+        // parts: [价格, 封单股数, 价格, 涨幅]
+        if (parts.length >= 3) {
+            const price = parseFloat(parts[0]) || 0;
+            const blockShares = parseFloat(parts[1]) || 0;
+            const amount = price * blockShares;
+            return '封单 ' + formatAmount(amount);
         }
-    } else if (typeObj.type === "change") {
-        return (100 * parseFloat(info)).toFixed(2) + "%";
-    } else if (typeObj.type === "price") {
-        return Number(info).toFixed(2) + "元";
+        return rawInfo;
     }
-    return info;
+    // type 16,32: 打开涨停/打开跌停 → 显示涨幅
+    if (typeId === 16 || typeId === 32) {
+        // parts: [价格, 涨幅]
+        if (parts.length >= 2) {
+            const pct = parseFloat(parts[1]) || 0;
+            return (pct * 100).toFixed(2) + '%';
+        }
+        return rawInfo;
+    }
+    // type 64,128,8193,8194: 有大买盘/有大卖盘/大笔买入/大笔卖出 → 显示成交额
+    if (typeId === 64 || typeId === 128 || typeId === 8193 || typeId === 8194) {
+        // parts: [股数, 价格, 涨幅, 成交额]
+        if (parts.length >= 4) {
+            const turnover = parseFloat(parts[3]) || 0;
+            return formatAmount(turnover);
+        }
+        return rawInfo;
+    }
+    // type 8201,8202,8203,8204: 火箭发射/快速反弹/高台跳水/加速下跌 → 显示涨幅
+    if (typeId === 8201 || typeId === 8202 || typeId === 8203 || typeId === 8204) {
+        // parts: [涨幅, 价格, 涨幅]
+        if (parts.length >= 1) {
+            const pct = parseFloat(parts[0]) || 0;
+            return (pct * 100).toFixed(2) + '%';
+        }
+        return rawInfo;
+    }
+    // 其他类型，使用原始逻辑提取第一个值
+    const firstVal = rawInfo.indexOf(",") >= 0 ? rawInfo.substring(0, rawInfo.indexOf(",")) : rawInfo;
+    return firstVal;
 }
 
 /**
@@ -79,6 +105,7 @@ async function getJSONPData(url) {
 
 /**
  * 从东方财富接口加载异动数据
+ * 轮询机制（每5秒）保证了不同时刻的数据都能被捕获
  */
 async function loadStockChange() {
     const t = Date.now();
@@ -100,7 +127,7 @@ async function loadStockChange() {
         let newIntradayItems = [];
         for (const item of list) {
             // 真实字段: tm, c, m, n, t, i
-            // 过滤：只保留 60/3/688 开头且非 ST/*ST 的股票
+            // 过滤：只保留 60/00/3/688 开头且非 ST/*ST 的股票
             const code = item.c || '';
             const name = item.n || '';
             if (!/^(60|00|3|688)\d+$/.test(code)) continue;
@@ -120,6 +147,9 @@ async function loadStockChange() {
                 continue;
             }
 
+            // 跳过竞价时段的其他类型数据，避免混入盘中
+            if (isChangeAuctionTime(item.tm)) continue;
+
             // 盘中数据
             const key = makeChangeKey({
                 code: code,
@@ -138,7 +168,6 @@ async function loadStockChange() {
             });
             if (STATE.changes.length > 500) STATE.changes = STATE.changes.slice(0, 500);
         }
-        // 每次请求后都重新渲染（竞价数据可能在变化，但盘中可能没新数据时不需要更新？不过渲染本身很轻，每次都刷新最安全）
         renderChanges();
     } catch (err) {
         console.error('[异动] 加载失败:', err);
@@ -150,22 +179,31 @@ async function loadStockChange() {
  * 竞价数据来自 STATE.persistentAuction（永久保留），盘中数据来自 STATE.changes
  */
 function renderChanges() {
-    // 竞价数据：倒序排列，取前50条
-    const auctionItems = STATE.persistentAuction.slice().sort((a, b) => (b.tm || 0) - (a.tm || 0)).slice(0, 50);
+    // 竞价数据：倒序排列，显示全部
+    const auctionItems = STATE.persistentAuction.slice().sort((a, b) => (b.tm || 0) - (a.tm || 0));
 
-    // 盘中数据：从 STATE.changes 过滤非竞价的
-    const intradayItems = [];
-    for (const item of STATE.changes) {
-        intradayItems.push(item);
-    }
+    // 盘中数据：从 STATE.changes
+    const intradayItems = STATE.changes.slice(0, 200);
     renderChangeList('auctionList', auctionItems, '竞价');
-    renderChangeList('intradayList', intradayItems.slice(0, 200), '盘中');
+    renderChangeList('intradayList', intradayItems, '盘中');
     document.getElementById('auctionCount').textContent = auctionItems.length + ' 条';
-    document.getElementById('intradayCount').textContent = Math.min(intradayItems.length, 200) + ' 条';
+    document.getElementById('intradayCount').textContent = intradayItems.length + ' 条';
+}
+
+// 预创建空白模板用于 DOM 克隆
+var _changeItemProto = null;
+function _getChangeItemProto() {
+    if (!_changeItemProto) {
+        var div = document.createElement('div');
+        div.className = 'change-item';
+        div.innerHTML = '<span class="time"></span><span class="type-indicator"></span><span class="name"></span><span class="code"></span><span class="type-name"></span><span class="desc"></span>';
+        _changeItemProto = div;
+    }
+    return _changeItemProto.cloneNode(true);
 }
 
 /**
- * 渲染单个异动列表
+ * 渲染单个异动列表（使用 DocumentFragment 批量 DOM 操作避免 innerHTML 性能问题）
  * @param {string} containerId - 容器元素 ID
  * @param {Array} items - 异动条目数组
  * @param {string} label - 列表标签（竞价/盘中）
@@ -174,38 +212,39 @@ function renderChangeList(containerId, items, label) {
     const container = document.getElementById(containerId);
     if (!container) return;
     if (!items || items.length === 0) {
-        container.innerHTML = `<div class="change-empty">暂无${label}数据</div>`;
+        container.innerHTML = '<div class="change-empty">暂无' + label + '数据</div>';
         return;
     }
-    let html = '';
-    for (const item of items) {
+    var fragment = document.createDocumentFragment();
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
         // 真实字段: tm, c, m, n, t, i
-        const name = item.n || '--';
-        const code = item.c || '--';
-        const timeStr = parseTMTime(item.tm);
-        const typeId = item.t || 0;
-        const typeObj = CHANGE_TYPES[String(typeId)];
-        const typeName = typeObj ? typeObj.name : '异动';
-        const infoDisplay = formatChangeInfo(item.i || '', typeObj);
+        var name = item.n || '--';
+        var code = item.c || '--';
+        var timeStr = parseTMTime(item.tm);
+        var typeId = item.t || 0;
+        var typeObj = CHANGE_TYPES[String(typeId)];
+        var typeName = typeObj ? typeObj.name : '异动';
+        var infoDisplay = formatChangeInfo(item.i || '', typeId);
 
         // 根据 type 方向确定颜色
-        const isUp = typeObj && typeObj.direction === 1;
-        const isDown = typeObj && typeObj.direction === -1;
-        const indicatorCls = isUp ? 'up' : (isDown ? 'down' : '');
-        const descCls = isUp ? 'up' : (isDown ? 'down' : '');
+        var isUp = typeObj && typeObj.direction === 1;
+        var isDown = typeObj && typeObj.direction === -1;
+        var indicatorCls = isUp ? 'up' : (isDown ? 'down' : '');
+        var descCls = isUp ? 'up' : (isDown ? 'down' : '');
 
-        html += `
-            <div class="change-item">
-                <span class="time">${timeStr}</span>
-                <span class="type-indicator ${indicatorCls}"></span>
-                <span class="name">${name}</span>
-                <span class="code">${code}</span>
-                <span class="type-name ${descCls}">${typeName}</span>
-                <span class="desc ${descCls}">${infoDisplay}</span>
-            </div>
-        `;
+        var el = _getChangeItemProto();
+        el.querySelector('.time').textContent = timeStr;
+        el.querySelector('.type-indicator').className = 'type-indicator ' + indicatorCls;
+        el.querySelector('.name').textContent = name;
+        el.querySelector('.code').textContent = code;
+        el.querySelector('.type-name').className = 'type-name ' + descCls;
+        el.querySelector('.type-name').textContent = typeName;
+        el.querySelector('.desc').className = 'desc ' + descCls;
+        el.querySelector('.desc').textContent = infoDisplay;
+        fragment.appendChild(el);
     }
-    container.innerHTML = html;
+    container.replaceChildren(fragment);
 }
 
 /**

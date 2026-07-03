@@ -50,26 +50,20 @@ body {
 }
 .index-card .card-header {
     display: flex;
-    justify-content: space-between;
     align-items: baseline;
     margin-bottom: 3px;
     flex-shrink: 0;
+    gap: 8px;
 }
 .index-card .card-header .name {
     font-size: 13px;
     font-weight: 600;
     color: #1d2129;
 }
-.index-card .card-header .value {
-    font-size: 16px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
 .index-card .card-header .sub {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     color: #86909c;
-    margin-left: 6px;
 }
 .index-card canvas {
     width: 100%;

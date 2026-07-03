@@ -72,12 +72,9 @@ function updateIndexDisplay(code, data) {
         // 更新最新累计值、相对昨天同一时间的差额、以及今日预估成交额
         const lastToday = todayCum.length > 0 ? todayCum[todayCum.length - 1] : null;
         const lastYest = yesterdayCum.length > 0 ? yesterdayCum[yesterdayCum.length - 1] : null;
-        const valEl = document.getElementById('val_800004');
         const subEl = document.getElementById('sub_800004');
-        // 更新标题（显示预估全天成交额）
-        const nameEl = document.querySelector('.index-card[data-code="800004"] .name');
+        const nameEl = document.getElementById('name_800004');
         if (lastToday && lastYest) {
-            valEl.textContent = formatAmount(lastToday.cumAmount);
             // 查找昨天同一时间的累计值
             const yestMap = {};
             for (const p of yesterdayCum) {
@@ -98,7 +95,6 @@ function updateIndexDisplay(code, data) {
                 nameEl.textContent = `全A成交额`;
             }
         } else {
-            valEl.textContent = '--';
             subEl.textContent = '';
             nameEl.textContent = `全A成交额`;
         }
@@ -124,31 +120,26 @@ function updateIndexDisplay(code, data) {
         // 按时间排序
         chart.data.sort((a, b) => parseTrendTimeStr(a).localeCompare(parseTrendTimeStr(b)));
 
-        // 计算涨跌幅（基于昨日收盘价）
+        // 计算涨跌幅（基于昨日收盘价），全部显示在 sub 中
         const prePrice = chart.prePrice;
         const last = chart.data.length > 0 ? chart.data[chart.data.length - 1] : null;
-        const valEl = document.getElementById(`val_${code}`);
         const subEl = document.getElementById(`sub_${code}`);
         if (last && prePrice > 0) {
             const arr = last.split(',');
             const price = parseFloat(arr[4]) || 0;
-            valEl.textContent = price.toFixed(2);
             const diff = price - prePrice;
             const pct = (diff / prePrice * 100);
             const sign = diff > 0 ? '+' : '';
             const cls = diff > 0 ? 'text-up' : (diff < 0 ? 'text-down' : 'text-flat');
-            subEl.innerHTML = `<span class="${cls}">${sign}${diff.toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>`;
+            subEl.innerHTML = `<span class="${cls}">${price.toFixed(2)} ${sign}${diff.toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>`;
         } else if (last && prePrice <= 0) {
-            // 无昨日收盘价时，显示当前价格但不显示涨跌幅
             const arr = last.split(',');
             const price = parseFloat(arr[4]) || 0;
-            valEl.textContent = price.toFixed(2);
-            subEl.textContent = '';
+            subEl.textContent = price.toFixed(2);
         } else {
-            valEl.textContent = '--';
-            subEl.textContent = '';
+            subEl.textContent = '--';
         }
 
-        drawTrendChart(`chart_${code}`, chart.data, chart.color, false, null, true);
+        drawTrendChart(`chart_${code}`, chart.data, chart.color, false, null, true, chart.prePrice);
     }
 }
