@@ -48,22 +48,34 @@
         </div>
 
         <div class="change-area">
-            <div class="change-panel" id="panelAuction">
-                <div class="panel-title">
-                    <span>🔥 竞价涨停</span>
-                    <span class="badge" id="auctionCount">0 条</span>
+            <div class="change-sidebar">
+                <div class="change-panel" id="panelZDFB">
+                    <div class="panel-title" id="zdfbTitle">📊 涨跌分布</div>
+                    <div class="zdfb-chart" id="zdfbChart"></div>
                 </div>
-                <div class="change-list" id="auctionList">
-                    <div class="change-empty">暂无竞价涨停数据</div>
+                <div class="change-panel" id="panelZDT">
+                    <div class="panel-title" id="zdtTitle">📈 涨跌停趋势</div>
+                    <div class="zdt-chart" id="zdtChart"></div>
+                </div>
+                <div class="change-panel" id="panelAuction">
+                    <div class="panel-title">
+                        <span>🔥 竞价涨停</span>
+                        <span class="badge" id="auctionCount">0 条</span>
+                    </div>
+                    <div class="change-list" id="auctionList">
+                        <div class="change-empty">暂无竞价涨停数据</div>
+                    </div>
                 </div>
             </div>
-            <div class="change-panel" id="panelIntraday">
-                <div class="panel-title">
-                    <span>⚡ 盘中异动</span>
-                    <span class="badge" id="intradayCount">0 条</span>
-                </div>
-                <div class="change-list" id="intradayList">
-                    <div class="change-empty">暂无盘中异动数据</div>
+            <div class="change-main">
+                <div class="change-panel" id="panelIntraday">
+                    <div class="panel-title">
+                        <span>⚡ 盘中异动</span>
+                        <span class="badge" id="intradayCount">0 条</span>
+                    </div>
+                    <div class="change-list" id="intradayList">
+                        <div class="change-empty">暂无盘中异动数据</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -81,11 +93,13 @@
     <script src="js/render/chart-renderer.js"></script>
     <script src="js/render/index-cards.js"></script>
     <script src="js/render/change-list.js"></script>
+    <script src="js/render/market-stats.js"></script>
 
     <!-- 数据模块 -->
     <script src="js/data/index-data.js"></script>
     <script src="js/data/change-data.js"></script>
     <script src="js/data/storage.js"></script>
+    <script src="js/data/market-stats.js"></script>
 
     <!-- 启动入口 -->
     <script src="js/app.js"></script>

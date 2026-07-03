@@ -35,6 +35,20 @@ const SSE_COMMON_PATH =
     '&fields2=f51,f52,f53,f54,f55,f56,f57,f58&mpi=1000' +
     '&ut=fa5fd1943c7b386f172d6893dbfba10b&iscr=0&iscca=0&wbp2u=|0|0|0|web';
 
+/** 涨跌分布接口配置 */
+const ZDFB_API = {
+    baseUrl: 'https://push2ex.eastmoney.com/getTopicZDFenBu',
+    ut: '7eea3edcaed734bea9cbfc24409ed989',
+    dpt: 'wz.ztzt',
+};
+
+/** 涨跌停对比趋势接口配置 */
+const ZDT_API = {
+    baseUrl: 'https://push2ex.eastmoney.com/getTopicZDTCount',
+    ut: '7eea3edcaed734bea9cbfc24409ed989',
+    dpt: 'wz.ztzt',
+};
+
 /** 异动接口配置 */
 const CHANGE_API = {
     baseUrl: 'https://push2ex.eastmoney.com/getAllStockChanges',

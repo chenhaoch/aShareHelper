@@ -30,6 +30,9 @@ const AppState = (function () {
     /** 异动轮询定时器 ID */
     let _changeTimer = null;
 
+    /** 涨跌分布/涨跌停趋势轮询定时器 ID */
+    let _marketStatsTimer = null;
+
     // ---- 公共 API ----
 
     const api = {
@@ -90,6 +93,9 @@ const AppState = (function () {
 
         get changeTimer() { return _changeTimer; },
         set changeTimer(v) { _changeTimer = v; },
+
+        get marketStatsTimer() { return _marketStatsTimer; },
+        set marketStatsTimer(v) { _marketStatsTimer = v; },
     };
 
     return api;

@@ -36,13 +36,26 @@
         // 6. 从本地存储恢复竞价数据
         StorageManager.restoreAuctionData();
 
-        // 7. 启动异动轮询
+        // 7. 注册事件总线：涨跌分布更新
+        EventBus.on('zdfb:update', (data) => {
+            MarketStatsRenderer.renderZDFB(data);
+        });
+
+        // 8. 注册事件总线：涨跌停趋势更新
+        EventBus.on('zdt:update', (data) => {
+            MarketStatsRenderer.renderZDT(data);
+        });
+
+        // 9. 启动涨跌分布 + 涨跌停趋势轮询
+        MarketStatsData.startPolling(5000);
+
+        // 10. 启动异动轮询
         ChangeDataLoader.startPolling(5000);
 
-        // 8. 自动保存竞价数据
+        // 11. 自动保存竞价数据
         StorageManager.autoSaveAuction();
 
-        // 9. 更新时间显示
+        // 12. 更新时间显示
         function updateClock() {
             const el = document.getElementById('headerTime');
             if (el) {

@@ -85,14 +85,36 @@ body {
     grid-template-columns: 1fr 3fr;
     gap: 8px;
 }
+.change-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+.change-main {
+    min-height: 0;
+}
 .change-panel {
     background: #ffffff;
     border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-    padding: 8px 10px 6px;
+    padding: 6px 10px 4px;
     display: flex;
     flex-direction: column;
-    min-height: 300px;
+}
+#panelZDFB {
+    min-height: 130px;
+}
+#panelZDT {
+    min-height: 130px;
+}
+#panelAuction {
+    min-height: 180px;
+    flex: 1;
+}
+#panelIntraday {
+    min-height: 400px;
+    flex: 1;
 }
 .change-panel .panel-title {
     font-size: 13px;
@@ -119,7 +141,7 @@ body {
     overflow-y: auto;
     margin-top: 4px;
     padding-right: 4px;
-    max-height: 400px;
+    max-height: 430px;
 }
 .change-list::-webkit-scrollbar {
     width: 4px;
@@ -208,6 +230,20 @@ body {
 }
 .change-item .desc.down {
     color: #2d9b4e;
+}
+.zdfb-chart {
+    flex: 1;
+    overflow: hidden;
+    margin-top: 4px;
+    min-height: 80px;
+}
+.zdt-chart {
+    width: 100%;
+    height: 100px;
+    flex-shrink: 0;
+    border-radius: 3px;
+    background: #fafafa;
+    margin-top: 4px;
 }
 .change-empty {
     color: #c9cdd4;

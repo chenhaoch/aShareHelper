@@ -16,10 +16,6 @@ res.data: [
 ]
 
 # 涨跌比，涨跌停比
-东方财富涨停行情：https://quote.eastmoney.com/ztb/?from=center
-
-涨跌分布：https://push2ex.eastmoney.com/getTopicZDFenBu?cb=callbackdata6936951&ut=7eea3edcaed734bea9cbfc24409ed989&dpt=wz.ztzt&_=1782996817390
-涨跌停对比趋势：https://push2ex.eastmoney.com/getTopicZDTCount?cb=callbackdata9331851&ut=7eea3edcaed734bea9cbfc24409ed989&dpt=wz.ztzt&time=0&_=1782996817391
 
 
 # 优化
