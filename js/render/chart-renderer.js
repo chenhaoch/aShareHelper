@@ -12,8 +12,6 @@
     const _subCharts = {};
     /** Series 实例 { key: series } */
     const _series = {};
-    /** 容器尺寸缓存 */
-    const _sizes = {};
 
     // ---- 容器管理 ----
     function getContainer(code) {
@@ -45,7 +43,34 @@
         return dif.map((v, i) => ({ dif: v, dea: dea[i], macd: 2 * (v - dea[i]) }));
     }
 
-    // ---- 创建主图表（价格/成交额） ----
+    // ---- 生成交叉光标时间标签 ----
+    function _createCrosshairLabel(chart, container) {
+        const label = document.createElement('div');
+        label.className = 'crosshair-time-label';
+        label.style.cssText =
+            'position:absolute;bottom:-1px;left:0;' +
+            'background:#1d2129;color:#fff;font-size:10px;' +
+            'padding:0 5px;line-height:16px;border-radius:3px;' +
+            'pointer-events:none;z-index:20;display:none;' +
+            'font-family:-apple-system,sans-serif;';
+        container.appendChild(label);
+
+        chart.subscribeCrosshairMove((param) => {
+            if (!param.time || !param.point) {
+                label.style.display = 'none';
+                return;
+            }
+            const d = new Date(param.time * 1000);
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            label.textContent = `${hh}:${mm}`;
+            label.style.display = 'block';
+            const px = Math.round(param.point.x);
+            label.style.left = Math.max(0, px - 20) + 'px';
+        });
+    }
+
+    // ---- 主图（价格/成交额） ----
     function createMainChart(code) {
         if (_mainCharts[code]) return _mainCharts[code];
 
@@ -53,51 +78,58 @@
         if (!container) return null;
 
         const { w, h } = getContainerRect(code);
-        // 主图占 70%，子图占 30%
-        const mainH = Math.round(h * 0.7);
-        const subH = Math.round(h * 0.3);
+        const cfg = INDEX_CONFIG[code];
+        // 有子图时主图占65%，子图占33%（2px 间隔）
+        const mainRatio = cfg.isAmount ? 1.0 : 0.65;
+        const mainH = Math.round(h * mainRatio);
 
         const chart = LightweightCharts.createChart(container, {
             width: w,
             height: mainH,
             layout: {
                 background: { type: 'solid', color: '#fafafa' },
-                textColor: '#86909c',
-                fontSize: 10,
             },
             grid: {
-                vertLines: { color: '#e8eaed', style: 2 },
-                horzLines: { color: '#e8eaed', style: 2 },
+                vertLines: { visible: false },
+                horzLines: { visible: false },
             },
             crosshair: {
-                mode: LightweightCharts.CrosshairMode.Normal,
-                vertLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1d2129' },
-                horzLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1d2129' },
-            },
-            timeScale: {
-                visible: true,
-                timeVisible: true,
-                secondsVisible: false,
-                borderColor: '#e8eaed',
-                tickMarkFormatter: (time) => {
-                    const d = new Date(time * 1000);
-                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                mode: LightweightCharts.CrosshairMode.Magnet,
+                vertLine: {
+                    color: '#a0a7b0',
+                    width: 0.5,
+                    style: LightweightCharts.LineStyle.Dashed,
+                    labelVisible: false,
+                },
+                horzLine: {
+                    color: '#a0a7b0',
+                    width: 0.5,
+                    style: LightweightCharts.LineStyle.Dashed,
+                    labelVisible: false,
                 },
             },
+            timeScale: {
+                visible: false,
+                timeVisible: false,
+            },
             rightPriceScale: {
-                borderColor: '#e8eaed',
-                scaleMargins: { top: 0.08, bottom: 0.08 },
+                visible: false,
+                borderVisible: false,
+            },
+            leftPriceScale: {
+                visible: false,
             },
             handleScroll: false,
             handleScale: false,
         });
 
+        _createCrosshairLabel(chart, container);
+
         _mainCharts[code] = chart;
-        _sizes[code] = { mainH, subH };
         return chart;
     }
 
-    // ---- 为价格指数创建子图（MACD/差额） ----
+    // ---- 子图（MACD/差额） ----
     function ensureSubChart(code) {
         if (_subCharts[code]) return _subCharts[code];
 
@@ -105,16 +137,9 @@
         if (!container) return null;
 
         const { w, h } = getContainerRect(code);
-        const mainH = Math.round(h * 0.7);
-        const subH = Math.round(h * 0.3);
+        const mainH = Math.round(h * 0.65);
+        const subH = h - mainH - 2;
 
-        // 获取当前容器的高度，将子图定位在容器底部区域
-        // Lightweight Charts 的 overlay API 不够完善，所以我们用第二个独立的 chart 实例叠加
-        // 在同一个容器中叠加两个 chart 实例需要用定位处理
-        // 更可靠的方式：创建一个 div 包裹主图和子图
-
-        // 由于 Lightweight Charts 的设计限制（每个 chart 独占一个容器），
-        // 更好的方案是在 chart-container 内创建两个子 div
         let subContainer = container.querySelector('.sub-chart');
         if (!subContainer) {
             subContainer = document.createElement('div');
@@ -123,39 +148,37 @@
             container.style.position = 'relative';
             container.appendChild(subContainer);
         }
-        subContainer.style.height = subH + 'px';
+        subContainer.style.height = Math.max(subH, 35) + 'px';
         subContainer.style.width = w + 'px';
 
-        // 确保主图高度正确
         const mainChart = _mainCharts[code];
-        if (mainChart) {
-            mainChart.applyOptions({ height: mainH });
-        }
+        if (mainChart) mainChart.applyOptions({ height: mainH });
 
         const subChart = LightweightCharts.createChart(subContainer, {
             width: w,
-            height: subH,
+            height: Math.max(subH, 35),
             layout: {
                 background: { type: 'solid', color: '#fafafa' },
-                textColor: '#86909c',
-                fontSize: 9,
             },
             grid: {
-                vertLines: { color: '#e8eaed', style: 2 },
-                horzLines: { color: '#e8eaed', style: 2 },
+                vertLines: { visible: false },
+                horzLines: { visible: false },
             },
             crosshair: {
                 mode: LightweightCharts.CrosshairMode.Normal,
-                vertLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1d2129' },
+                vertLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed },
+                horzLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed },
             },
             timeScale: {
                 visible: false,
                 timeVisible: false,
-                borderColor: '#e8eaed',
             },
             rightPriceScale: {
-                borderColor: '#e8eaed',
-                scaleMargins: { top: 0.15, bottom: 0.15 },
+                visible: false,
+                borderVisible: false,
+            },
+            leftPriceScale: {
+                visible: false,
             },
             handleScroll: false,
             handleScale: false,
@@ -165,14 +188,14 @@
         return subChart;
     }
 
-    // ---- 创建 Series (主图价格线) ----
+    // ---- Series 工厂 ----
     function getPriceSeries(code) {
         const key = `price_${code}`;
         if (_series[key]) return _series[key];
         const chart = _mainCharts[code];
         if (!chart) return null;
         const cfg = INDEX_CONFIG[code];
-        const s = chart.addLineSeries({
+        _series[key] = chart.addLineSeries({
             color: cfg.color,
             lineWidth: 1.2,
             crosshairMarkerVisible: true,
@@ -181,8 +204,7 @@
             lastValueVisible: false,
             priceLineVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
     function getAvgSeries(code) {
@@ -190,7 +212,7 @@
         if (_series[key]) return _series[key];
         const chart = _mainCharts[code];
         if (!chart) return null;
-        const s = chart.addLineSeries({
+        _series[key] = chart.addLineSeries({
             color: '#fadb14',
             lineWidth: 0.8,
             crosshairMarkerVisible: false,
@@ -198,8 +220,7 @@
             lastValueVisible: false,
             priceLineVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
     function getCompareSeries(code) {
@@ -207,7 +228,7 @@
         if (_series[key]) return _series[key];
         const chart = _mainCharts[code];
         if (!chart) return null;
-        const s = chart.addLineSeries({
+        _series[key] = chart.addLineSeries({
             color: '#2d9b4e',
             lineWidth: 1,
             crosshairMarkerVisible: false,
@@ -215,25 +236,22 @@
             lastValueVisible: false,
             priceLineVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
-    // ---- 子图 Series ----
     function getMACDDifSeries(code) {
         const key = `sub_dif_${code}`;
         if (_series[key]) return _series[key];
         const chart = _subCharts[code];
         if (!chart) return null;
-        const s = chart.addLineSeries({
+        _series[key] = chart.addLineSeries({
             color: '#1890ff',
             lineWidth: 1,
             crosshairMarkerVisible: false,
             lastValueVisible: false,
             priceLineVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
     function getMADCDeaSeries(code) {
@@ -241,15 +259,14 @@
         if (_series[key]) return _series[key];
         const chart = _subCharts[code];
         if (!chart) return null;
-        const s = chart.addLineSeries({
+        _series[key] = chart.addLineSeries({
             color: '#fa8c16',
             lineWidth: 1,
             crosshairMarkerVisible: false,
             lastValueVisible: false,
             priceLineVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
     function getMACDHistogramSeries(code) {
@@ -257,37 +274,62 @@
         if (_series[key]) return _series[key];
         const chart = _subCharts[code];
         if (!chart) return null;
-        const s = chart.addHistogramSeries({
-            color: '#e5474a',
-            priceFormat: { type: 'volume' },
+        _series[key] = chart.addHistogramSeries({
             priceLineVisible: false,
             lastValueVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
-    // ---- 成交额差额柱状图 ----
     function getDiffHistogramSeries(code) {
         const key = `sub_diff_${code}`;
         if (_series[key]) return _series[key];
         const chart = _subCharts[code];
         if (!chart) return null;
-        const s = chart.addHistogramSeries({
-            priceFormat: { type: 'volume' },
+        _series[key] = chart.addHistogramSeries({
             priceLineVisible: false,
             lastValueVisible: false,
         });
-        _series[key] = s;
-        return s;
+        return _series[key];
     }
 
-    // ---- 工具函数 ----
+    // ---- 工具 ----
     function fit(code) {
         const main = _mainCharts[code];
         if (main) main.timeScale().fitContent();
         const sub = _subCharts[code];
         if (sub) sub.timeScale().fitContent();
+        _updateNoonMarker(code);
+    }
+
+    // ---- 11:30 午休分隔虚线（通过 UTC 偏移适配 timeScale） ----
+    function _getNoonTimestamp() {
+        const now = new Date();
+        return Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 3, 30, 0) / 1000);
+    }
+
+    function _updateNoonMarker(code) {
+        const chart = _mainCharts[code];
+        if (!chart) return;
+        const container = getContainer(code);
+        if (!container) return;
+
+        const old = container.querySelector('.noon-marker');
+        if (old) old.remove();
+
+        const x = chart.timeScale().timeToCoordinate(_getNoonTimestamp());
+        if (x === null || x <= 0) return;
+
+        const marker = document.createElement('div');
+        marker.className = 'noon-marker';
+        marker.style.cssText =
+            'position:absolute;left:' + x + 'px;top:0;bottom:0;' +
+            'width:0;border-left:1px dashed #c0c4cc;pointer-events:none;z-index:10;';
+        container.appendChild(marker);
+    }
+
+    function scheduleNoonMarker(code) {
+        setTimeout(() => _updateNoonMarker(code), 200);
     }
 
     // ============================================================
@@ -296,15 +338,12 @@
 
     window.ChartRenderer = {
 
-        /** 初始化所有图表 */
         initAll() {
             INDEX_CODES.forEach(code => {
-                const cfg = INDEX_CONFIG[code];
                 const main = createMainChart(code);
                 if (main) {
                     _mainCharts[code] = main;
-                    // 为价格指数创建子图
-                    if (!cfg.isAmount) {
+                    if (!INDEX_CONFIG[code].isAmount) {
                         ensureSubChart(code);
                     }
                 }
@@ -312,18 +351,15 @@
             this._setupResize();
         },
 
-        /** 更新分时数据 */
         updatePriceSeries(code, dataPoints, options = {}) {
             const { showAvg = false, isAmount = false } = options;
             if (!dataPoints || dataPoints.length === 0) return;
 
-            // 主图价格线
             const series = getPriceSeries(code);
             if (!series) return;
             const sorted = [...dataPoints].sort((a, b) => a.time - b.time);
             series.setData(sorted);
 
-            // 均价线
             if (showAvg && !isAmount) {
                 const avgData = sorted.filter(p => p.avg != null && p.avg > 0)
                     .map(p => ({ time: p.time, value: p.avg }));
@@ -331,15 +367,14 @@
                 if (avgSeries && avgData.length > 0) avgSeries.setData(avgData);
             }
 
-            // 更新 MACD 子图（仅价格指数）
             if (!isAmount && sorted.length > 10) {
                 this._updateMACD(code, sorted);
             }
 
             fit(code);
+            scheduleNoonMarker(code);
         },
 
-        /** 内部：计算并更新 MACD */
         _updateMACD(code, sorted) {
             const chart = _subCharts[code];
             if (!chart) return;
@@ -356,34 +391,24 @@
                 macd: macdData[i].macd,
             }));
 
-            // DIF 线
             const difSeries = getMACDDifSeries(code);
-            if (difSeries) {
-                difSeries.setData(macdPoints.map(p => ({ time: p.time, value: p.dif })));
-            }
+            if (difSeries) difSeries.setData(macdPoints.map(p => ({ time: p.time, value: p.dif })));
 
-            // DEA 线
             const deaSeries = getMADCDeaSeries(code);
-            if (deaSeries) {
-                deaSeries.setData(macdPoints.map(p => ({ time: p.time, value: p.dea })));
-            }
+            if (deaSeries) deaSeries.setData(macdPoints.map(p => ({ time: p.time, value: p.dea })));
 
-            // MACD 柱状图（红色正/绿色负）
             const histSeries = getMACDHistogramSeries(code);
             if (histSeries) {
-                const histData = macdPoints.map(p => ({
+                histSeries.setData(macdPoints.map(p => ({
                     time: p.time,
                     value: p.macd,
                     color: p.macd >= 0 ? '#e5474a' : '#2d9b4e',
-                }));
-                histSeries.setData(histData);
+                })));
             }
 
-            // 同步子图时间轴与主图
             chart.timeScale().fitContent();
         },
 
-        /** 更新成交额对比线 */
         updateCompareSeries(code, dataPoints) {
             if (!dataPoints || dataPoints.length === 0) return;
             const series = getCompareSeries(code);
@@ -391,9 +416,9 @@
             const sorted = [...dataPoints].sort((a, b) => a.time - b.time);
             series.setData(sorted);
             fit(code);
+            scheduleNoonMarker(code);
         },
 
-        /** 更新成交额差额柱状图 */
         updateDiffHistogram(code, diffPoints) {
             if (!diffPoints || diffPoints.length === 0) return;
             const chart = ensureSubChart(code);
@@ -402,20 +427,22 @@
             const histSeries = getDiffHistogramSeries(code);
             if (!histSeries) return;
 
-            const histData = diffPoints.map(p => ({
+            histSeries.setData(diffPoints.map(p => ({
                 time: p.time,
-                value: Math.abs(p.diff),
+                value: p.diff,
                 color: p.diff >= 0 ? '#e5474a' : '#2d9b4e',
-            }));
-            histSeries.setData(histData);
+            })));
+
             chart.timeScale().fitContent();
         },
 
-        /** 更新图表尺寸 */
         resize(code, width, height) {
             const mainChart = _mainCharts[code];
-            const mainH = Math.round(height * 0.7);
-            const subH = Math.round(height * 0.3);
+            const cfg = INDEX_CONFIG[code];
+            const mainRatio = cfg.isAmount ? 1.0 : 0.65;
+            const mainH = Math.round(height * mainRatio);
+            const subH = height - mainH - 2;
+
             if (mainChart) mainChart.applyOptions({ width, height: mainH });
 
             const subChart = _subCharts[code];
@@ -424,14 +451,13 @@
                 const subEl = container ? container.querySelector('.sub-chart') : null;
                 if (subEl) {
                     subEl.style.width = width + 'px';
-                    subEl.style.height = subH + 'px';
+                    subEl.style.height = Math.max(subH, 35) + 'px';
                 }
-                subChart.applyOptions({ width, height: subH });
+                subChart.applyOptions({ width, height: Math.max(subH, 35) });
             }
-            _sizes[code] = { mainH, subH };
+            _updateNoonMarker(code);
         },
 
-        /** Resize 监听 */
         _setupResize() {
             let timer = null;
             window.addEventListener('resize', () => {

@@ -8,6 +8,22 @@
 
     /** 轮询标志 */
     let _isPolling = false;
+    /** 是否首次请求（首次不受交易时段限制） */
+    let _firstRequest = true;
+
+    /**
+     * 判断当前是否在交易时段内
+     * 只在交易日 9:15~11:35 和 12:55~15:05 发送请求
+     */
+    function isTradingTime() {
+        const now = new Date();
+        // 周六(6)和周日(0)不交易
+        const day = now.getDay();
+        if (day === 0 || day === 6) return false;
+        const t = now.getHours() * 100 + now.getMinutes();
+        // 上午 9:15~11:35, 下午 12:55~15:05
+        return (t >= 915 && t <= 1135) || (t >= 1255 && t <= 1505);
+    }
 
     /**
      * 判断是否为竞价时间（9:25 之前）
@@ -51,6 +67,10 @@
      * 加载异动数据
      */
     async function loadChanges() {
+        // 首次请求不受交易时段限制（确保开盘前能获取竞价数据）
+        // 之后的轮询只在交易时段内发送
+        if (!_firstRequest && !isTradingTime()) return;
+
         if (_isPolling) return; // 防抖：上次请求未完成跳过
         _isPolling = true;
 
@@ -71,6 +91,7 @@
             console.error('[ChangeData] 异动加载失败:', err);
         } finally {
             _isPolling = false;
+            _firstRequest = false; // 首次请求完成，后续需判断交易时段
         }
     }
 
@@ -96,8 +117,7 @@
                 });
                 if (!AppState.auctionSet.has(key)) {
                     AppState.auctionSet.add(key);
-                    const auction = AppState.persistentAuction;
-                    auction.push(item);
+                    AppState.persistentAuction.push(item);
                 }
                 continue;
             }
@@ -126,7 +146,6 @@
             }
             AppState.intradayChanges = changes;
 
-            // 渲染
             renderAllChanges();
         }
     }
@@ -135,12 +154,10 @@
      * 渲染所有异动列表
      */
     function renderAllChanges() {
-        // 竞价数据倒序
         const auctionItems = AppState.persistentAuction
             .slice()
             .sort((a, b) => (b.tm || 0) - (a.tm || 0));
 
-        // 盘中数据
         const intradayItems = AppState.intradayChanges.slice(0, CHANGE_API.maxIntradayItems);
 
         ChangeListRenderer.renderChangeList('auctionList', auctionItems, '竞价');
@@ -157,8 +174,10 @@
     window.ChangeDataLoader = {
         /** 启动轮询 */
         startPolling(interval) {
+            // 立即检查并执行一次（如果在交易时段内）
             loadChanges();
             if (AppState.changeTimer) clearInterval(AppState.changeTimer);
+            // 每秒检查一次，但内部 isTradingTime 和 _isPolling 双重控制
             AppState.changeTimer = setInterval(() => loadChanges(), interval || CHANGE_API.pollingInterval);
         },
 
@@ -170,7 +189,6 @@
             }
         },
 
-        /** 手动触发一次加载 */
         loadOnce: loadChanges,
     };
 })();
