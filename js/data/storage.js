@@ -8,6 +8,7 @@
 
     const STORAGE_KEYS = {
         AUCTION_DATA: 'ashare_auction_data',  // 竞价数据
+        SECTORS_DATA: 'ashare_sectors',        // 板块数据（单 key 存储所有个股）
     };
 
     /** 缓存有效期（24小时） */
@@ -107,6 +108,68 @@
     }
 
     // ============================================================
+    //  板块数据存储
+    // ============================================================
+
+    /**
+     * 保存全部板块缓存到 localStorage
+     * @param {Object} cache - { [code]: { sectors: [], updatedAt } }
+     */
+    function saveAllSectors(cache) {
+        try {
+            const payload = {
+                data: cache,
+                savedAt: Date.now(),
+            };
+            localStorage.setItem(STORAGE_KEYS.SECTORS_DATA, JSON.stringify(payload));
+        } catch (e) {
+            console.warn('[Storage] 保存板块数据失败:', e);
+        }
+    }
+
+    /**
+     * 从 localStorage 加载全部板块缓存
+     * @returns {Object} { [code]: { sectors: [], updatedAt } }
+     */
+    function loadAllSectors() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEYS.SECTORS_DATA);
+            if (!raw) return {};
+            const payload = JSON.parse(raw);
+            return payload.data || {};
+        } catch (e) {
+            console.warn('[Storage] 读取板块数据失败:', e);
+            return {};
+        }
+    }
+
+    /**
+     * 从 localStorage 加载板块缓存到内存（全局只调用一次）
+     */
+    function restoreSectorCache() {
+        if (AppState.sectorCacheLoaded) return;
+        const cache = loadAllSectors();
+        AppState.setAllSectorCache(cache);
+        AppState.sectorCacheLoaded = true;
+        const count = Object.keys(cache).length;
+        if (count > 0) {
+            console.log(`[Storage] 已恢复 ${count} 只个股的板块缓存`);
+        }
+    }
+
+    /**
+     * 保存单个个股的板块数据到 localStorage（合并写入）
+     * @param {string} code
+     * @param {Object} data - { sectors: [], updatedAt }
+     */
+    function saveSingleSector(code, data) {
+        // 先从 localStorage 读取完整缓存再合并，确保不丢失其他线程写入的数据
+        const fullCache = loadAllSectors();
+        fullCache[code] = data;
+        saveAllSectors(fullCache);
+    }
+
+    // ============================================================
     //  公共 API
     // ============================================================
 
@@ -115,6 +178,10 @@
         loadAuctionData,
         restoreAuctionData,
         autoSaveAuction,
+        saveAllSectors,
+        loadAllSectors,
+        restoreSectorCache,
+        saveSingleSector,
     };
 
 })();

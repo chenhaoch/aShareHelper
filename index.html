@@ -9,7 +9,11 @@
 <body>
     <div class="app">
         <header class="app-header">
-            <h1>📊 A股盯盘 <span class="time" id="headerTime">--:--:--</span></h1>
+            <h1>📊 A股盯盘 <span class="time" id="headerTime">--:--:--</span>
+                <span class="header-links">
+                    <a href="sector-editor.html" target="_blank">📋 板块维护</a>
+                </span>
+            </h1>
         </header>
 
         <div class="index-grid" id="indexGrid">
@@ -99,6 +103,7 @@
     <script src="js/data/index-data.js"></script>
     <script src="js/data/change-data.js"></script>
     <script src="js/data/storage.js"></script>
+    <script src="js/data/sector-data.js"></script>
     <script src="js/data/market-stats.js"></script>
 
     <!-- 启动入口 -->

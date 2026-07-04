@@ -19,7 +19,8 @@
                 '<span class="name"></span>' +
                 '<span class="code"></span>' +
                 '<span class="type-name"></span>' +
-                '<span class="desc"></span>';
+                '<span class="desc"></span>' +
+                '<span class="sector-tags"></span>';
             _changeItemProto = div;
         }
         return _changeItemProto.cloneNode(true);
@@ -72,6 +73,48 @@
     }
 
     /**
+     * 渲染板块标签到异动项
+     * @param {HTMLElement} el - 异动项 DOM 元素
+     * @param {string} code - 个股代码
+     */
+    function _renderSectorTags(el, code, stockName) {
+        const tagsContainer = el.querySelector('.sector-tags');
+        if (!tagsContainer) return;
+
+        // 确保个股名称被保存到缓存
+        if (stockName) {
+            SectorData.ensureStockName(code, stockName);
+        }
+
+        const result = SectorData.getSectors(code);
+
+        if (result.loading) {
+            tagsContainer.textContent = '';
+            const loadingEl = document.createElement('span');
+            loadingEl.className = 'sector-loading';
+            loadingEl.textContent = '...';
+            tagsContainer.appendChild(loadingEl);
+            // 存储 code 以便后续更新
+            tagsContainer.dataset.code = code.replace(/^(sh|sz|bj)/i, '');
+            return;
+        }
+
+        tagsContainer.innerHTML = '';
+        const sectors = result.sectors || [];
+        if (sectors.length === 0) return;
+
+        for (const s of sectors) {
+            const tag = document.createElement('span');
+            tag.className = 'sector-tag ' + (s.source === 'more' ? 'more' : s.source);
+            tag.textContent = s.name;
+            if (s.source !== 'more') {
+                tag.title = SectorData.getSourceLabel(s.source);
+            }
+            tagsContainer.appendChild(tag);
+        }
+    }
+
+    /**
      * 渲染单个异动列表
      */
     function renderChangeList(containerId, items, label) {
@@ -108,14 +151,40 @@
             el.querySelector('.type-name').textContent = typeName;
             el.querySelector('.desc').className = 'desc ' + descCls;
             el.querySelector('.desc').textContent = infoDisplay;
+            // 渲染板块标签，传入个股名称
+            _renderSectorTags(el, code, name);
             fragment.appendChild(el);
         }
         container.replaceChildren(fragment);
+    }
+
+    /**
+     * 局部更新某个股的板块标签（同花顺数据返回后触发）
+     * @param {string} code - 标准化后的 code
+     */
+    function updateSingleStockSectors(code) {
+        const containers = ['auctionList', 'intradayList'];
+        for (const containerId of containers) {
+            const container = document.getElementById(containerId);
+            if (!container) continue;
+            const items = container.querySelectorAll('.change-item');
+            for (const el of items) {
+                const codeSpan = el.querySelector('.code');
+                if (!codeSpan) continue;
+                const itemCode = codeSpan.textContent.replace(/^(sh|sz|bj)/i, '');
+                if (itemCode === code) {
+                    const nameSpan = el.querySelector('.name');
+                    const stockName = nameSpan ? nameSpan.textContent : '';
+                    _renderSectorTags(el, code, stockName);
+                }
+            }
+        }
     }
 
     window.ChangeListRenderer = {
         renderChangeList,
         parseTMTime,
         formatChangeInfo,
+        updateSingleStockSectors,
     };
 })();

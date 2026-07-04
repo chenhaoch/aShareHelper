@@ -33,6 +33,15 @@ const AppState = (function () {
     /** 涨跌分布/涨跌停趋势轮询定时器 ID */
     let _marketStatsTimer = null;
 
+    /** 板块缓存（内存）{ [code]: { sectors: [], updatedAt } } */
+    let _sectorCache = {};
+
+    /** 进行中的同花顺板块请求 { [code]: Promise } */
+    let _pendingSectorFetches = {};
+
+    /** 板块缓存是否已从 localStorage 加载 */
+    let _sectorCacheLoaded = false;
+
     // ---- 公共 API ----
 
     const api = {
@@ -96,6 +105,37 @@ const AppState = (function () {
 
         get marketStatsTimer() { return _marketStatsTimer; },
         set marketStatsTimer(v) { _marketStatsTimer = v; },
+
+        // ---- 板块缓存 ----
+
+        get sectorCache() { return _sectorCache; },
+        set sectorCache(v) { _sectorCache = v; },
+
+        get pendingSectorFetches() { return _pendingSectorFetches; },
+
+        get sectorCacheLoaded() { return _sectorCacheLoaded; },
+        set sectorCacheLoaded(v) { _sectorCacheLoaded = v; },
+
+        /**
+         * 获取某个股的板块缓存
+         */
+        getSectorCache(code) {
+            return _sectorCache[code] || null;
+        },
+
+        /**
+         * 设置某个股的板块缓存
+         */
+        setSectorCache(code, data) {
+            _sectorCache[code] = data;
+        },
+
+        /**
+         * 批量设置板块缓存
+         */
+        setAllSectorCache(cache) {
+            _sectorCache = cache || {};
+        },
     };
 
     return api;

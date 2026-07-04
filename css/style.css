@@ -224,12 +224,64 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     text-align: left;
+    min-width: 0;
 }
 .change-item .desc.up {
     color: #e5474a;
 }
 .change-item .desc.down {
     color: #2d9b4e;
+}
+
+/* ===== 板块标签 ===== */
+.change-item .sector-tags {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: 6px;
+    max-width: 240px;
+    overflow: hidden;
+}
+.change-item .sector-tag {
+    display: inline-block;
+    font-size: 10px;
+    line-height: 1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    cursor: default;
+    transition: opacity 0.15s;
+}
+.change-item .sector-tag:hover {
+    opacity: 0.85;
+}
+.sector-tag.manual {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffe0b2;
+}
+.sector-tag.jiuyan {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+.sector-tag.tonghuashun {
+    background: #f5f5f5;
+    color: #616161;
+    border: 1px solid #e0e0e0;
+}
+.sector-tag.more {
+    background: transparent;
+    color: #86909c;
+    border: 1px dashed #d0d0d0;
+}
+.sector-loading {
+    display: inline-block;
+    font-size: 11px;
+    color: #c9cdd4;
+    margin-left: 6px;
+    flex-shrink: 0;
 }
 .zdfb-chart {
     flex: 1;
@@ -251,6 +303,27 @@ body {
     padding: 20px 0;
     font-size: 13px;
 }
+/* ===== header 导航链接 ===== */
+.app-header .header-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+    font-size: 12px;
+    font-weight: 400;
+}
+.app-header .header-links a {
+    color: #86909c;
+    text-decoration: none;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+.app-header .header-links a:hover {
+    background: #e8e8e8;
+    color: #1d2129;
+}
+
 .text-up {
     font-weight: bold;
     color: #e5474a;

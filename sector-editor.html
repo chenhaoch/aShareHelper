@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>板块维护 - A股盯盘</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .editor-app { max-width: 1200px; margin: 0 auto; }
+        .editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+        .editor-header h1 { font-size: 18px; font-weight: 600; }
+        .editor-header .back-link { font-size: 13px; color: #1890ff; text-decoration: none; }
+        .editor-header .back-link:hover { text-decoration: underline; }
+        .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .editor-panel { background: #ffffff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 8px 10px; }
+        .editor-panel.full { grid-column: 1 / -1; }
+        .editor-panel .panel-title { font-size: 13px; font-weight: 600; color: #1d2129; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; margin-bottom: 6px; }
+        .editor-panel .panel-title .badge { font-size: 11px; font-weight: 400; color: #86909c; background: #f5f5f5; padding: 0 8px; border-radius: 8px; line-height: 20px; margin-left: 6px; }
+        .form-group { margin-bottom: 5px; }
+        .form-group label { display: block; font-size: 11px; color: #4e5969; margin-bottom: 2px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 3px; font-size: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1890ff; }
+        .form-group textarea { resize: vertical; min-height: 60px; font-family: monospace; }
+        .form-row { display: flex; gap: 6px; align-items: flex-end; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        .form-row .form-group:last-child { flex: 0 0 auto; }
+        .btn { padding: 4px 12px; border: none; border-radius: 3px; font-size: 12px; cursor: pointer; transition: background 0.15s, opacity 0.15s; white-space: nowrap; }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #1890ff; color: #fff; }
+        .btn-success { background: #52c41a; color: #fff; }
+        .btn-danger { background: #ff4d4f; color: #fff; }
+        .btn-default { background: #f5f5f5; color: #4e5969; border: 1px solid #d9d9d9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; min-height: 22px; }
+        .tag-item { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #f0f5ff; color: #1890ff; border: 1px solid #d6e4ff; }
+        .tag-item .remove { cursor: pointer; font-size: 13px; line-height: 1; color: #999; margin-left: 1px; }
+        .tag-item .remove:hover { color: #ff4d4f; }
+        .result-box { margin-top: 4px; padding: 5px 8px; border-radius: 3px; font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; }
+        .result-box.info { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+        .result-box.success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .result-box.warning { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+        .result-box.error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+        .result-box pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+        .sector-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .sector-table th { text-align: left; padding: 4px 6px; background: #fafafa; border-bottom: 2px solid #f0f0f0; font-weight: 600; color: #4e5969; position: sticky; top: 0; }
+        .sector-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        .sector-table tr:hover td { background: #f7f8fa; }
+        .sector-table .code-cell { font-family: monospace; color: #86909c; font-size: 11px; }
+        .sector-table .name-cell { font-weight: 500; font-size: 12px; }
+        .sector-table .action-cell { white-space: nowrap; }
+        .sector-table .action-cell .btn { padding: 3px 10px; font-size: 11px; line-height: 1.4; }
+        .sector-table .tag-list { margin-top: 0; min-height: 0; align-items: center; display: flex; flex-wrap: wrap; gap: 4px; }
+        .sector-table .sector-tag { font-size: 12px; line-height: 1.4; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
+        .sector-table .sector-tag.manual { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+        .sector-table .sector-tag.jiuyan { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+        .sector-table .sector-tag.tonghuashun { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+        .sector-table .sector-tag.more { background: transparent; color: #86909c; border: 1px dashed #d0d0d0; }
+        .scrollable-table { max-height: 400px; overflow-y: auto; }
+        .scrollable-table::-webkit-scrollbar { width: 4px; }
+        .scrollable-table::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 4px; }
+        .search-bar { display: flex; gap: 6px; margin-bottom: 6px; }
+        .search-bar input { flex: 1; padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 3px; font-size: 12px; outline: none; }
+        .search-bar input:focus { border-color: #1890ff; }
+        .empty-state { color: #c9cdd4; text-align: center; padding: 20px 0; font-size: 13px; }
+        @media (max-width: 800px) { .editor-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="app editor-app">
+        <div class="editor-header">
+            <h1>📋 板块维护</h1>
+            <a href="index.html" class="back-link">← 返回盯盘页</a>
+        </div>
+
+        <div class="editor-grid">
+            <!-- 面板1：韭研公社导入（左右排布） -->
+            <div class="editor-panel">
+                <div class="panel-title">🔄 韭研公社导入</div>
+                <div class="form-row" style="align-items: stretch;">
+                    <div class="form-group" style="flex: 0 0 140px; margin-bottom: 0;">
+                        <label>日期</label>
+                        <input type="date" id="jiuyanDate" />
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label>JSON（从 DevTools → Network 复制）</label>
+                        <input type="text" id="jiuyanJsonInput" placeholder='{"data":[{"action_field_id":"...","name":"机器人","list":[...]}]}' />
+                    </div>
+                    <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
+                        <button class="btn btn-primary" id="btnParseJiuyan" style="margin-top:16px;">导入</button>
+                    </div>
+                </div>
+                <div id="jiuyanResult" class="result-box" style="display:none;"></div>
+            </div>
+
+            <!-- 面板2：手动录入（逗号分隔 + 自动查询） -->
+            <div class="editor-panel">
+                <div class="panel-title">✏️ 手动录入</div>
+                <div class="form-row" style="margin-bottom:4px;">
+                    <div class="form-group" style="flex: 0 0 90px; margin-bottom: 0;">
+                        <label>代码</label>
+                        <input type="text" id="manualCode" placeholder="603137" maxlength="6" />
+                    </div>
+                    <div class="form-group" style="flex: 0 0 100px; margin-bottom: 0;">
+                        <label>名称</label>
+                        <input type="text" id="manualName" placeholder="个股名称" />
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label>板块（逗号分隔）</label>
+                        <input type="text" id="manualSectorsInput" placeholder="机器人,建筑节能,光伏" />
+                    </div>
+                    <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
+                        <button class="btn btn-success" id="btnSaveManual" style="margin-top:16px;">保存</button>
+                    </div>
+                </div>
+                <div class="tag-list" id="manualTagList"></div>
+                <span id="manualSaveResult" style="font-size: 11px;"></span>
+            </div>
+
+            <!-- 面板3：已维护列表（全宽） -->
+            <div class="editor-panel full">
+                <div class="panel-title">
+                    📂 已维护个股板块
+                    <span class="badge" id="maintainedCount">0 只</span>
+                </div>
+                <div class="search-bar">
+                    <input type="text" id="searchMaintained" placeholder="搜索代码或板块名称..." />
+                    <button class="btn btn-default" id="btnRefreshList">刷新</button>
+                </div>
+                <div class="scrollable-table" id="maintainedTableWrapper">
+                    <table class="sector-table" id="maintainedTable">
+                        <thead>
+                            <tr>
+                                <th style="width:66px;">代码</th>
+                                <th style="width:70px;">名称</th>
+                                <th>板块标签</th>
+                                <th style="width:130px;">更新时间</th>
+                                <th style="width:90px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintainedTbody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="maintainedEmpty" style="display:none;">暂无已维护数据</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/core/constants.js"></script>
+    <script src="js/core/event-bus.js"></script>
+    <script src="js/core/state.js"></script>
+    <script src="js/data/storage.js"></script>
+    <script src="js/data/sector-data.js"></script>
+
+    <script>
+    (function () {
+        'use strict';
+
+        function getLastTradingDay() {
+            const now = new Date();
+            const day = now.getDay();
+            if (day === 0) now.setDate(now.getDate() - 2);
+            else if (day === 6) now.setDate(now.getDate() - 1);
+            return now.toISOString().slice(0, 10);
+        }
+
+        function init() {
+            SectorData.initSectorData();
+            document.getElementById('jiuyanDate').value = getLastTradingDay();
+            bindEvents();
+            refreshMaintainedList();
+        }
+
+        function bindEvents() {
+            document.getElementById('btnParseJiuyan').addEventListener('click', parseJiuyanJson);
+            // 代码输入满6位时自动查询
+            document.getElementById('manualCode').addEventListener('input', function(e) {
+                const raw = e.target.value.replace(/^(sh|sz|bj)/i, '').replace(/\D/g, '');
+                if (raw.length === 6) {
+                    autoQuery(raw);
+                }
+            });
+            document.getElementById('btnSaveManual').addEventListener('click', saveManualSectors);
+            document.getElementById('searchMaintained').addEventListener('input', refreshMaintainedList);
+            document.getElementById('btnRefreshList').addEventListener('click', refreshMaintainedList);
+        }
+
+        // ============================================================
+        //  1. 韭研公社导入
+        // ============================================================
+        function parseJiuyanJson() {
+            const raw = document.getElementById('jiuyanJsonInput').value.trim();
+            if (!raw) { showResult('jiuyanResult', '请先粘贴 JSON 数据', 'warning'); return; }
+
+            let result;
+            try { result = JSON.parse(raw); }
+            catch (e) { showResult('jiuyanResult', 'JSON 格式错误', 'error'); return; }
+
+            if (!result || !result.data || !Array.isArray(result.data)) {
+                showResult('jiuyanResult', 'JSON 缺少 data 数组', 'error');
+                return;
+            }
+
+            let matchCount = 0, codeCount = 0;
+            const importedCodes = new Set();
+
+            for (const group of result.data) {
+                if (!group.action_field_id || !group.name || !Array.isArray(group.list)) continue;
+                const mainSectorName = group.name;
+                for (const stock of group.list) {
+                    const rawCode = stock.code || '';
+                    const code = rawCode.replace(/^(sh|sz|bj)/i, '');
+                    if (!code) continue;
+                    const stockName = stock.name || '';
+                    if (/^(\*ST|ST)/.test(stockName)) continue;
+
+                    SectorData.mergeJiuyanSector(code, mainSectorName, stockName);
+                    importedCodes.add(code);
+                    matchCount++;
+
+                    const expound = stock.article && stock.article.action_info && stock.article.action_info.expound;
+                    if (expound) {
+                        const summary = expound.split('\n')[0];
+                        if (summary) {
+                            const subSectors = summary.split('+').map(s => s.trim()).filter(s => s);
+                            for (const sub of subSectors) {
+                                SectorData.mergeJiuyanSector(code, sub, stockName);
+                                matchCount++;
+                            }
+                        }
+                    }
+                }
+                codeCount++;
+            }
+
+            StorageManager.saveAllSectors(AppState.sectorCache);
+            const msg = `导入完成！${codeCount} 个分类，${matchCount} 条关系，${importedCodes.size} 只个股`;
+            showResult('jiuyanResult', msg, 'success');
+            refreshMaintainedList();
+        }
+
+        // ============================================================
+        //  2. 手动录入（自动查询 + 逗号分隔）
+        // ============================================================
+        let _currentManualCode = '';
+
+        function autoQuery(code) {
+            if (!/^\d{6}$/.test(code)) return;
+            const cached = AppState.getSectorCache(code);
+            if (!cached) {
+                // 没有缓存，不做任何操作
+                _currentManualCode = '';
+                return;
+            }
+            _currentManualCode = code;
+            const stockName = cached.stockName || '';
+            document.getElementById('manualName').value = stockName;
+            // 加载已有的手动板块，用逗号填入输入框
+            let manualSectors = [];
+            if (cached.sectors && cached.sectors.length > 0) {
+                manualSectors = cached.sectors.filter(s => s.source === 'manual').map(s => s.name);
+            }
+            document.getElementById('manualSectorsInput').value = manualSectors.join('，');
+            renderManualTagList();
+        }
+
+        function _getSectorsFromInput() {
+            const raw = document.getElementById('manualSectorsInput').value;
+            // 支持中文逗号、英文逗号、中文空格分隔
+            return raw.split(/[,，、\s]+/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        function renderManualTagList() {
+            const sectors = _getSectorsFromInput();
+            const container = document.getElementById('manualTagList');
+            container.innerHTML = '';
+            for (let i = 0; i < sectors.length; i++) {
+                const tag = document.createElement('span');
+                tag.className = 'tag-item';
+                tag.innerHTML = sectors[i] + '<span class="remove" data-index="' + i + '">×</span>';
+                tag.querySelector('.remove').addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index, 10);
+                    const sectors = _getSectorsFromInput();
+                    sectors.splice(idx, 1);
+                    document.getElementById('manualSectorsInput').value = sectors.join('，');
+                    renderManualTagList();
+                });
+                container.appendChild(tag);
+            }
+        }
+
+        // 输入框内容变化时实时刷新标签
+        document.addEventListener('input', function(e) {
+            if (e.target && e.target.id === 'manualSectorsInput') {
+                renderManualTagList();
+            }
+        });
+
+        function saveManualSectors() {
+            // 如果当前没有查询到 code，尝试从输入框获取
+            if (!_currentManualCode) {
+                const raw = document.getElementById('manualCode').value.replace(/^(sh|sz|bj)/i, '').replace(/\D/g, '');
+                if (raw.length === 6) _currentManualCode = raw;
+            }
+            if (!_currentManualCode) { showSaveMsg('请输入6位股票代码', '#ff4d4f'); return; }
+            const sectors = _getSectorsFromInput();
+            if (sectors.length === 0) { showSaveMsg('请输入板块名称', '#ff4d4f'); return; }
+            const stockName = document.getElementById('manualName').value.trim();
+            SectorData.mergeManualSectors(_currentManualCode, sectors, stockName);
+            const updated = AppState.getSectorCache(_currentManualCode);
+            if (updated) StorageManager.saveSingleSector(_currentManualCode, updated);
+            showSaveMsg('已保存 ' + sectors.length + ' 个板块', '#52c41a');
+            refreshMaintainedList();
+        }
+        function showSaveMsg(msg, color) {
+            const el = document.getElementById('manualSaveResult');
+            el.textContent = msg; el.style.color = color;
+        }
+
+        // ============================================================
+        //  3. 已维护列表
+        // ============================================================
+        function refreshMaintainedList() {
+            const searchText = document.getElementById('searchMaintained').value.trim().toLowerCase();
+            const codes = SectorData.getAllCachedCodes();
+            const tbody = document.getElementById('maintainedTbody');
+            const emptyEl = document.getElementById('maintainedEmpty');
+            tbody.innerHTML = '';
+            let filtered = codes;
+            if (searchText) {
+                filtered = codes.filter(code => {
+                    if (code.toLowerCase().includes(searchText)) return true;
+                    const cached = AppState.getSectorCache(code);
+                    if (cached) {
+                        if (cached.stockName && cached.stockName.toLowerCase().includes(searchText)) return true;
+                        if (cached.sectors) return cached.sectors.some(s => s.name.toLowerCase().includes(searchText));
+                    }
+                    return false;
+                });
+            }
+            if (filtered.length === 0) {
+                emptyEl.style.display = 'block';
+                document.getElementById('maintainedTableWrapper').style.display = 'none';
+                document.getElementById('maintainedCount').textContent = '0 只';
+                return;
+            }
+            emptyEl.style.display = 'none';
+            document.getElementById('maintainedTableWrapper').style.display = 'block';
+            document.getElementById('maintainedCount').textContent = filtered.length + ' 只';
+            const fragment = document.createDocumentFragment();
+            for (const code of filtered) {
+                const cached = AppState.getSectorCache(code);
+                if (!cached) continue;
+                const tr = document.createElement('tr');
+                const tdCode = document.createElement('td');
+                tdCode.className = 'code-cell';
+                tdCode.textContent = code;
+                tr.appendChild(tdCode);
+                const tdName = document.createElement('td');
+                tdName.className = 'name-cell';
+                tdName.textContent = cached.stockName || '--';
+                tr.appendChild(tdName);
+                const tdSectors = document.createElement('td');
+                const tagContainer = document.createElement('div');
+                tagContainer.className = 'tag-list';
+                if (cached.sectors) {
+                    for (const s of cached.sectors) {
+                        const tag = document.createElement('span');
+                        tag.className = 'sector-tag ' + (s.source === 'more' ? 'more' : s.source);
+                        tag.textContent = s.name;
+                        if (s.source === 'manual') tag.title = '手动录入';
+                        else if (s.source === 'jiuyan') tag.title = '韭研公社';
+                        else if (s.source === 'tonghuashun') tag.title = '同花顺';
+                        tagContainer.appendChild(tag);
+                    }
+                }
+                tdSectors.appendChild(tagContainer);
+                tr.appendChild(tdSectors);
+                const tdTime = document.createElement('td');
+                tdTime.style.fontSize = '11px';
+                tdTime.style.color = '#86909c';
+                if (cached.updatedAt) {
+                    tdTime.textContent = new Date(cached.updatedAt).toLocaleString('zh-CN', { hour12: false });
+                } else {
+                    tdTime.textContent = '--';
+                }
+                tr.appendChild(tdTime);
+                const tdAction = document.createElement('td');
+                tdAction.className = 'action-cell';
+                const btnEdit = document.createElement('button');
+                btnEdit.className = 'btn btn-default';
+                btnEdit.textContent = '编辑';
+                btnEdit.style.marginRight = '3px';
+                btnEdit.addEventListener('click', function() { document.getElementById('manualCode').value = code; autoQuery(code); });
+                const btnDelete = document.createElement('button');
+                btnDelete.className = 'btn btn-danger';
+                btnDelete.textContent = '删除';
+                btnDelete.addEventListener('click', function() { if (confirm('确定删除 ' + code + ' 的板块数据？')) { SectorData.removeSectorCache(code); refreshMaintainedList(); } });
+                tdAction.appendChild(btnEdit);
+                tdAction.appendChild(btnDelete);
+                tr.appendChild(tdAction);
+                fragment.appendChild(tr);
+            }
+            tbody.appendChild(fragment);
+        }
+
+        function showResult(elementId, msg, type) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'block';
+            el.className = 'result-box ' + (type || 'info');
+            el.innerHTML = '<pre>' + msg + '</pre>';
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+</body>
+</html>

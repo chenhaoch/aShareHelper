@@ -39,6 +39,7 @@ function md5Hash(input, options = {}) {
 }
 
 // ---------- 测试 ----------
-console.log(md5Hash('Uu0KfOB8iUP69d3c:' + new Date().getTime()));
+const token = md5Hash('Uu0KfOB8iUP69d3c:' + new Date().getTime())
+console.log(token);
 // 应输出：某个 32 位 hex（非空）
 </script>

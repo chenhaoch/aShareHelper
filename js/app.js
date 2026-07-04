@@ -30,32 +30,40 @@
             ChartRenderer.updateDiffHistogram(data.code, data.diffPoints);
         });
 
-        // 5. 启动指数 SSE 连接
+        // 5. 初始化板块缓存（从 localStorage 恢复到内存）
+        SectorData.initSectorData();
+
+        // 5b. 注册事件总线：板块数据更新后局部刷新异动项
+        EventBus.on('sector:updated', (data) => {
+            ChangeListRenderer.updateSingleStockSectors(data.code);
+        });
+
+        // 6. 启动指数 SSE 连接
         IndexDataLoader.startAll();
 
-        // 6. 从本地存储恢复竞价数据
+        // 7. 从本地存储恢复竞价数据
         StorageManager.restoreAuctionData();
 
-        // 7. 注册事件总线：涨跌分布更新
+        // 8. 注册事件总线：涨跌分布更新
         EventBus.on('zdfb:update', (data) => {
             MarketStatsRenderer.renderZDFB(data);
         });
 
-        // 8. 注册事件总线：涨跌停趋势更新
+        // 9. 注册事件总线：涨跌停趋势更新
         EventBus.on('zdt:update', (data) => {
             MarketStatsRenderer.renderZDT(data);
         });
 
-        // 9. 启动涨跌分布 + 涨跌停趋势轮询
+        // 10. 启动涨跌分布 + 涨跌停趋势轮询
         MarketStatsData.startPolling(5000);
 
-        // 10. 启动异动轮询
+        // 11. 启动异动轮询
         ChangeDataLoader.startPolling(5000);
 
-        // 11. 自动保存竞价数据
+        // 12. 自动保存竞价数据
         StorageManager.autoSaveAuction();
 
-        // 12. 更新时间显示
+        // 13. 更新时间显示
         function updateClock() {
             const el = document.getElementById('headerTime');
             if (el) {
