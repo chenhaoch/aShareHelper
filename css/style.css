@@ -243,7 +243,7 @@ body {
     max-width: 240px;
     overflow: hidden;
 }
-.change-item .sector-tag {
+/* .change-item .sector-tag {
     display: inline-block;
     font-size: 10px;
     line-height: 1;
@@ -252,9 +252,19 @@ body {
     white-space: nowrap;
     cursor: default;
     transition: opacity 0.15s;
-}
+} */
 .change-item .sector-tag:hover {
     opacity: 0.85;
+}
+/* 全局 .sector-tag 基础样式（让异动列表之外的标签也能复用 padding / border-radius 等） */
+.sector-tag {
+    display: inline-block;
+    font-size: 12px;
+    line-height: 1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    cursor: default;
 }
 .sector-tag.manual {
     background: #fff3e0;
@@ -335,6 +345,60 @@ body {
 .text-flat {
     color: #86909c;
 }
+/* ===== sector-editor 页面专属样式 ===== */
+.editor-app { max-width: 1200px; margin: 0 auto; }
+.editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+.editor-header h1 { font-size: 18px; font-weight: 600; }
+.editor-header .back-link { font-size: 13px; color: #1890ff; text-decoration: none; }
+.editor-header .back-link:hover { text-decoration: underline; }
+.editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.editor-panel { background: #ffffff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 8px 10px; }
+.editor-panel.full { grid-column: 1 / -1; }
+.editor-panel .panel-title { font-size: 13px; font-weight: 600; color: #1d2129; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; margin-bottom: 6px; }
+.editor-panel .panel-title .badge { font-size: 11px; font-weight: 400; color: #86909c; background: #f5f5f5; padding: 0 8px; border-radius: 8px; line-height: 20px; margin-left: 6px; }
+.form-group { margin-bottom: 5px; }
+.form-group label { display: block; font-size: 11px; color: #4e5969; margin-bottom: 2px; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 3px; font-size: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1890ff; }
+.form-group textarea { resize: vertical; min-height: 60px; font-family: monospace; }
+.form-row { display: flex; gap: 6px; align-items: flex-end; }
+.form-row .form-group { flex: 1; margin-bottom: 0; }
+.form-row .form-group:last-child { flex: 0 0 auto; }
+.btn { padding: 4px 12px; border: none; border-radius: 3px; font-size: 12px; cursor: pointer; transition: background 0.15s, opacity 0.15s; white-space: nowrap; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: #1890ff; color: #fff; }
+.btn-success { background: #52c41a; color: #fff; }
+.btn-danger { background: #ff4d4f; color: #fff; }
+.btn-default { background: #f5f5f5; color: #4e5969; border: 1px solid #d9d9d9; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; min-height: 22px; }
+.tag-item { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #f0f5ff; color: #1890ff; border: 1px solid #d6e4ff; }
+.tag-item .remove { cursor: pointer; font-size: 13px; line-height: 1; color: #999; margin-left: 1px; }
+.tag-item .remove:hover { color: #ff4d4f; }
+.result-box { margin-top: 4px; padding: 5px 8px; border-radius: 3px; font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; }
+.result-box.info { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+.result-box.success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+.result-box.warning { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+.result-box.error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+.result-box pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+.sector-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sector-table th { text-align: left; padding: 4px 6px; background: #fafafa; border-bottom: 2px solid #f0f0f0; font-weight: 600; color: #4e5969; position: sticky; top: 0; }
+.sector-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.sector-table tr:hover td { background: #f7f8fa; }
+.sector-table .code-cell { font-family: monospace; color: #86909c; font-size: 11px; }
+.sector-table .name-cell { font-weight: 500; font-size: 12px; }
+.sector-table .action-cell { white-space: nowrap; }
+.sector-table .action-cell .btn { padding: 3px 10px; font-size: 11px; line-height: 1.4; }
+.sector-table .tag-list { margin-top: 0; min-height: 0; align-items: center; }
+.scrollable-table { max-height: 400px; overflow-y: auto; }
+.scrollable-table::-webkit-scrollbar { width: 4px; }
+.scrollable-table::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 4px; }
+.search-bar { display: flex; gap: 6px; margin-bottom: 6px; }
+.search-bar input { flex: 1; padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 3px; font-size: 12px; outline: none; }
+.search-bar input:focus { border-color: #1890ff; }
+.empty-state { color: #c9cdd4; text-align: center; padding: 20px 0; font-size: 13px; }
+@media (max-width: 800px) { .editor-grid { grid-template-columns: 1fr; } }
+
 @media (max-width: 1200px) {
     .index-grid {
         grid-template-columns: repeat(2, 1fr);

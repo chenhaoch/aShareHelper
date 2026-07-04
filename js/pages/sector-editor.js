@@ -1,0 +1,267 @@
+// ============================================================
+//  板块维护页面入口 — sector-editor.html
+//  依赖：constants.js, event-bus.js, state.js, storage.js, sector-data.js
+// ============================================================
+
+(function () {
+    'use strict';
+
+    function getLastTradingDay() {
+        const now = new Date();
+        const day = now.getDay();
+        if (day === 0) now.setDate(now.getDate() - 2);
+        else if (day === 6) now.setDate(now.getDate() - 1);
+        return now.toISOString().slice(0, 10);
+    }
+
+    function init() {
+        SectorData.initSectorData();
+        document.getElementById('jiuyanDate').value = getLastTradingDay();
+        bindEvents();
+        refreshMaintainedList();
+    }
+
+    function bindEvents() {
+        document.getElementById('btnParseJiuyan').addEventListener('click', parseJiuyanJson);
+        document.getElementById('manualCode').addEventListener('input', function (e) {
+            const raw = e.target.value.replace(/^(sh|sz|bj)/i, '').replace(/\D/g, '');
+            if (raw.length === 6) autoQuery(raw);
+        });
+        document.getElementById('btnSaveManual').addEventListener('click', saveManualSectors);
+        document.getElementById('searchMaintained').addEventListener('input', refreshMaintainedList);
+        document.getElementById('btnRefreshList').addEventListener('click', refreshMaintainedList);
+    }
+
+    // ============================================================
+    //  1. 韭研公社导入
+    // ============================================================
+    function parseJiuyanJson() {
+        const raw = document.getElementById('jiuyanJsonInput').value.trim();
+        if (!raw) { showResult('jiuyanResult', '请先粘贴 JSON 数据', 'warning'); return; }
+
+        let result;
+        try { result = JSON.parse(raw); }
+        catch (e) { showResult('jiuyanResult', 'JSON 格式错误', 'error'); return; }
+
+        if (!result || !result.data || !Array.isArray(result.data)) {
+            showResult('jiuyanResult', 'JSON 缺少 data 数组', 'error');
+            return;
+        }
+
+        let matchCount = 0, codeCount = 0;
+        const importedCodes = new Set();
+
+        for (const group of result.data) {
+            if (!group.action_field_id || !group.name || !Array.isArray(group.list)) continue;
+            const mainSectorName = group.name;
+            for (const stock of group.list) {
+                const rawCode = stock.code || '';
+                const code = rawCode.replace(/^(sh|sz|bj)/i, '');
+                if (!code) continue;
+                const stockName = stock.name || '';
+                if (/^(\*ST|ST)/.test(stockName)) continue;
+
+                SectorData.mergeJiuyanSector(code, mainSectorName, stockName);
+                importedCodes.add(code);
+                matchCount++;
+
+                const expound = stock.article && stock.article.action_info && stock.article.action_info.expound;
+                if (expound) {
+                    const summary = expound.split('\n')[0];
+                    if (summary) {
+                        const subSectors = summary.split('+').map(function (s) { return s.trim(); }).filter(function (s) { return s; });
+                        for (const sub of subSectors) {
+                            SectorData.mergeJiuyanSector(code, sub, stockName);
+                            matchCount++;
+                        }
+                    }
+                }
+            }
+            codeCount++;
+        }
+
+        StorageManager.saveAllSectors(AppState.sectorCache);
+        const msg = '导入完成！' + codeCount + ' 个分类，' + matchCount + ' 条关系，' + importedCodes.size + ' 只个股';
+        showResult('jiuyanResult', msg, 'success');
+        refreshMaintainedList();
+    }
+
+    // ============================================================
+    //  2. 手动录入（自动查询 + 逗号分隔）
+    // ============================================================
+    var _currentManualCode = '';
+
+    function autoQuery(code) {
+        if (!/^\d{6}$/.test(code)) return;
+        var cached = AppState.getSectorCache(code);
+        if (!cached) {
+            _currentManualCode = '';
+            return;
+        }
+        _currentManualCode = code;
+        var stockName = cached.stockName || '';
+        document.getElementById('manualName').value = stockName;
+        var manualSectors = [];
+        if (cached.sectors && cached.sectors.length > 0) {
+            manualSectors = cached.sectors.filter(function (s) { return s.source === 'manual'; }).map(function (s) { return s.name; });
+        }
+        document.getElementById('manualSectorsInput').value = manualSectors.join('，');
+        renderManualTagList();
+    }
+
+    function _getSectorsFromInput() {
+        var raw = document.getElementById('manualSectorsInput').value;
+        return raw.split(/[,，、\s]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+    }
+
+    function renderManualTagList() {
+        var sectors = _getSectorsFromInput();
+        var container = document.getElementById('manualTagList');
+        container.innerHTML = '';
+        for (var i = 0; i < sectors.length; i++) {
+            (function (idx) {
+                var tag = document.createElement('span');
+                tag.className = 'tag-item';
+                tag.innerHTML = sectors[idx] + '<span class="remove" data-index="' + idx + '">\u00d7</span>';
+                tag.querySelector('.remove').addEventListener('click', function () {
+                    var s = _getSectorsFromInput();
+                    s.splice(idx, 1);
+                    document.getElementById('manualSectorsInput').value = s.join('，');
+                    renderManualTagList();
+                });
+                container.appendChild(tag);
+            })(i);
+        }
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.id === 'manualSectorsInput') {
+            renderManualTagList();
+        }
+    });
+
+    function saveManualSectors() {
+        if (!_currentManualCode) {
+            var raw = document.getElementById('manualCode').value.replace(/^(sh|sz|bj)/i, '').replace(/\D/g, '');
+            if (raw.length === 6) _currentManualCode = raw;
+        }
+        if (!_currentManualCode) { showSaveMsg('请输入6位股票代码', '#ff4d4f'); return; }
+        var sectors = _getSectorsFromInput();
+        if (sectors.length === 0) { showSaveMsg('请输入板块名称', '#ff4d4f'); return; }
+        var stockName = document.getElementById('manualName').value.trim();
+        SectorData.mergeManualSectors(_currentManualCode, sectors, stockName);
+        var updated = AppState.getSectorCache(_currentManualCode);
+        if (updated) StorageManager.saveSingleSector(_currentManualCode, updated);
+        showSaveMsg('已保存 ' + sectors.length + ' 个板块', '#52c41a');
+        refreshMaintainedList();
+    }
+
+    function showSaveMsg(msg, color) {
+        var el = document.getElementById('manualSaveResult');
+        el.textContent = msg;
+        el.style.color = color;
+    }
+
+    // ============================================================
+    //  3. 已维护列表
+    // ============================================================
+    function refreshMaintainedList() {
+        var searchText = document.getElementById('searchMaintained').value.trim().toLowerCase();
+        var codes = SectorData.getAllCachedCodes();
+        var tbody = document.getElementById('maintainedTbody');
+        var emptyEl = document.getElementById('maintainedEmpty');
+        tbody.innerHTML = '';
+        var filtered = codes;
+        if (searchText) {
+            filtered = codes.filter(function (code) {
+                if (code.toLowerCase().includes(searchText)) return true;
+                var cached = AppState.getSectorCache(code);
+                if (cached) {
+                    if (cached.stockName && cached.stockName.toLowerCase().includes(searchText)) return true;
+                    if (cached.sectors) return cached.sectors.some(function (s) { return s.name.toLowerCase().includes(searchText); });
+                }
+                return false;
+            });
+        }
+        if (filtered.length === 0) {
+            emptyEl.style.display = 'block';
+            document.getElementById('maintainedTableWrapper').style.display = 'none';
+            document.getElementById('maintainedCount').textContent = '0 只';
+            return;
+        }
+        emptyEl.style.display = 'none';
+        document.getElementById('maintainedTableWrapper').style.display = 'block';
+        document.getElementById('maintainedCount').textContent = filtered.length + ' 只';
+        var fragment = document.createDocumentFragment();
+        for (var i = 0; i < filtered.length; i++) {
+            (function (code) {
+                var cached = AppState.getSectorCache(code);
+                if (!cached) return;
+                var tr = document.createElement('tr');
+                var tdCode = document.createElement('td');
+                tdCode.className = 'code-cell';
+                tdCode.textContent = code;
+                tr.appendChild(tdCode);
+                var tdName = document.createElement('td');
+                tdName.className = 'name-cell';
+                tdName.textContent = cached.stockName || '--';
+                tr.appendChild(tdName);
+                var tdSectors = document.createElement('td');
+                var tagContainer = document.createElement('div');
+                tagContainer.className = 'tag-list';
+                if (cached.sectors) {
+                    for (var j = 0; j < cached.sectors.length; j++) {
+                        var s = cached.sectors[j];
+                        var tag = document.createElement('span');
+                        tag.className = 'sector-tag ' + (s.source === 'more' ? 'more' : s.source);
+                        tag.textContent = s.name;
+                        if (s.source === 'manual') tag.title = '手动录入';
+                        else if (s.source === 'jiuyan') tag.title = '韭研公社';
+                        else if (s.source === 'tonghuashun') tag.title = '同花顺';
+                        tagContainer.appendChild(tag);
+                    }
+                }
+                tdSectors.appendChild(tagContainer);
+                tr.appendChild(tdSectors);
+                var tdTime = document.createElement('td');
+                tdTime.style.fontSize = '11px';
+                tdTime.style.color = '#86909c';
+                if (cached.updatedAt) {
+                    tdTime.textContent = new Date(cached.updatedAt).toLocaleString('zh-CN', { hour12: false });
+                } else {
+                    tdTime.textContent = '--';
+                }
+                tr.appendChild(tdTime);
+                var tdAction = document.createElement('td');
+                tdAction.className = 'action-cell';
+                var btnEdit = document.createElement('button');
+                btnEdit.className = 'btn btn-default';
+                btnEdit.textContent = '编辑';
+                btnEdit.style.marginRight = '3px';
+                btnEdit.addEventListener('click', function () { document.getElementById('manualCode').value = code; autoQuery(code); });
+                var btnDelete = document.createElement('button');
+                btnDelete.className = 'btn btn-danger';
+                btnDelete.textContent = '删除';
+                btnDelete.addEventListener('click', function () { if (confirm('确定删除 ' + code + ' 的板块数据？')) { SectorData.removeSectorCache(code); refreshMaintainedList(); } });
+                tdAction.appendChild(btnEdit);
+                tdAction.appendChild(btnDelete);
+                tr.appendChild(tdAction);
+                fragment.appendChild(tr);
+            })(filtered[i]);
+        }
+        tbody.appendChild(fragment);
+    }
+
+    function showResult(elementId, msg, type) {
+        var el = document.getElementById(elementId);
+        el.style.display = 'block';
+        el.className = 'result-box ' + (type || 'info');
+        el.innerHTML = '<pre>' + msg + '</pre>';
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
