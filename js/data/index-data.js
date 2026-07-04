@@ -148,18 +148,42 @@
     }
 
     /**
+     * 从趋势数据中提取日期字符串 "YYYY-MM-DD"
+     */
+    function extractDateFromTrend(str) {
+        const parts = str.split(',');
+        if (parts.length < 8) return null;
+        const datePart = parts[0].trim().split(' ')[0];
+        return datePart || null;
+    }
+
+    /**
      * 处理成交额数据
+     * "今天" = 数据中最新的交易日，"昨天" = 数据中较早的那天
      */
     function handleAmountIndex(code, trendsData) {
         const store = AppState.getIndexData(code);
 
+        // 扫描所有数据，提取不重复日期，取最新日期作为"今天"
+        const dates = new Set();
+        for (const d of trendsData) {
+            const date = extractDateFromTrend(d);
+            if (date) dates.add(date);
+        }
+        const sortedDates = [...dates].sort();
+        const latestDate = sortedDates[sortedDates.length - 1]; // 最新交易日
+        const yesterdayDate = sortedDates.length > 1 ? sortedDates[0] : null;
+
         for (const d of trendsData) {
             const t = parseTrendTimeStr(d);
             if (!t) continue;
-            if (isTodayTrend(d)) {
+            const date = extractDateFromTrend(d);
+            if (date === latestDate) {
                 store.today.set(t, d);
-            } else {
+            } else if (yesterdayDate && date === yesterdayDate) {
                 store.yesterday.set(t, d);
+            } else {
+                // 既不是最新也不是前一天的，丢掉（不会发生）
             }
         }
 
