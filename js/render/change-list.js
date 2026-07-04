@@ -26,6 +26,21 @@
         return _changeItemProto.cloneNode(true);
     }
 
+    function _getAuctionItemProto() {
+        const div = document.createElement('div');
+        div.className = 'change-item auction-item';
+        div.innerHTML =
+            '<span class="time"></span>' +
+            '<span class="type-indicator"></span>' +
+            '<span class="name-stack">' +
+            '  <span class="name"></span>' +
+            '  <span class="code"></span>' +
+            '</span>' +
+            '<span class="desc"></span>' +
+            '<span class="sector-tags"></span>';
+        return div;
+    }
+
     /**
      * 解析数字时间 "HH:MM:SS"
      */
@@ -81,7 +96,6 @@
         const tagsContainer = el.querySelector('.sector-tags');
         if (!tagsContainer) return;
 
-        // 确保个股名称被保存到缓存
         if (stockName) {
             SectorData.ensureStockName(code, stockName);
         }
@@ -89,12 +103,7 @@
         const result = SectorData.getSectors(code);
 
         if (result.loading) {
-            tagsContainer.textContent = '';
-            const loadingEl = document.createElement('span');
-            loadingEl.className = 'sector-loading';
-            loadingEl.textContent = '...';
-            tagsContainer.appendChild(loadingEl);
-            // 存储 code 以便后续更新
+            tagsContainer.innerHTML = '<span class="sector-loading">...</span>';
             tagsContainer.dataset.code = code.replace(/^(sh|sz|bj)/i, '');
             return;
         }
@@ -105,11 +114,9 @@
 
         for (const s of sectors) {
             const tag = document.createElement('span');
-            tag.className = 'sector-tag ' + (s.source === 'more' ? 'more' : s.source);
+            tag.className = 'sector-tag ' + s.source;
             tag.textContent = s.name;
-            if (s.source !== 'more') {
-                tag.title = SectorData.getSourceLabel(s.source);
-            }
+            tag.title = SectorData.getSourceLabel(s.source);
             tagsContainer.appendChild(tag);
         }
     }
@@ -126,7 +133,9 @@
             return;
         }
 
+        const isAuction = (containerId === 'auctionList');
         const fragment = document.createDocumentFragment();
+
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const name = item.n || '--';
@@ -142,16 +151,29 @@
             const indicatorCls = isUp ? 'up' : (isDown ? 'down' : '');
             const descCls = isUp ? 'up' : (isDown ? 'down' : '');
 
-            const el = _getChangeItemProto();
-            el.querySelector('.time').textContent = timeStr;
-            el.querySelector('.type-indicator').className = 'type-indicator ' + indicatorCls;
-            el.querySelector('.name').textContent = name;
-            el.querySelector('.code').textContent = code;
-            el.querySelector('.type-name').className = 'type-name ' + descCls;
-            el.querySelector('.type-name').textContent = typeName;
-            el.querySelector('.desc').className = 'desc ' + descCls;
-            el.querySelector('.desc').textContent = infoDisplay;
-            // 渲染板块标签，传入个股名称
+            let el;
+            if (isAuction) {
+                // 竞价项：隐藏 type-name，显示 desc（封单金额）
+                el = _getAuctionItemProto();
+                el.querySelector('.name').textContent = name;
+                el.querySelector('.code').textContent = code;
+                el.querySelector('.code').className = 'code ' + descCls;
+                el.querySelector('.time').textContent = timeStr;
+                el.querySelector('.type-indicator').className = 'type-indicator ' + indicatorCls;
+                el.querySelector('.desc').className = 'desc ' + descCls;
+                el.querySelector('.desc').textContent = infoDisplay;
+            } else {
+                el = _getChangeItemProto();
+                el.querySelector('.name').textContent = name;
+                el.querySelector('.code').textContent = code;
+                el.querySelector('.time').textContent = timeStr;
+                el.querySelector('.type-indicator').className = 'type-indicator ' + indicatorCls;
+                el.querySelector('.type-name').className = 'type-name ' + descCls;
+                el.querySelector('.type-name').textContent = typeName;
+                el.querySelector('.desc').className = 'desc ' + descCls;
+                el.querySelector('.desc').textContent = infoDisplay;
+            }
+
             _renderSectorTags(el, code, name);
             fragment.appendChild(el);
         }

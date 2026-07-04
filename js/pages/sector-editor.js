@@ -101,11 +101,12 @@
         _currentManualCode = code;
         var stockName = cached.stockName || '';
         document.getElementById('manualName').value = stockName;
-        var manualSectors = [];
+        // 加载全部来源板块，按 weight 排序展示
+        var allSectors = [];
         if (cached.sectors && cached.sectors.length > 0) {
-            manualSectors = cached.sectors.filter(function (s) { return s.source === 'manual'; }).map(function (s) { return s.name; });
+            allSectors = cached.sectors.map(function (s) { return s.name; });
         }
-        document.getElementById('manualSectorsInput').value = manualSectors.join('，');
+        document.getElementById('manualSectorsInput').value = allSectors.join('，');
         renderManualTagList();
     }
 
@@ -149,9 +150,8 @@
         var sectors = _getSectorsFromInput();
         if (sectors.length === 0) { showSaveMsg('请输入板块名称', '#ff4d4f'); return; }
         var stockName = document.getElementById('manualName').value.trim();
-        SectorData.mergeManualSectors(_currentManualCode, sectors, stockName);
-        var updated = AppState.getSectorCache(_currentManualCode);
-        if (updated) StorageManager.saveSingleSector(_currentManualCode, updated);
+        // 使用 replaceSectors 保留已存在的来源信息（同花顺、韭研），新增的标为 manual
+        SectorData.replaceSectors(_currentManualCode, sectors, stockName);
         showSaveMsg('已保存 ' + sectors.length + ' 个板块', '#52c41a');
         refreshMaintainedList();
     }

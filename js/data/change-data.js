@@ -100,6 +100,7 @@
      */
     function processChangeItems(list) {
         let newIntradayItems = [];
+        let hasNewAuction = false;
 
         for (const item of list) {
             const code = item.c || '';
@@ -118,6 +119,7 @@
                 if (!AppState.auctionSet.has(key)) {
                     AppState.auctionSet.add(key);
                     AppState.persistentAuction.push(item);
+                    hasNewAuction = true;
                 }
                 continue;
             }
@@ -137,14 +139,16 @@
             }
         }
 
-        if (newIntradayItems.length > 0) {
-            let changes = AppState.intradayChanges;
-            changes = changes.concat(newIntradayItems);
-            changes.sort((a, b) => (b.tm || 0) - (a.tm || 0));
-            if (changes.length > CHANGE_API.maxChanges) {
-                changes = changes.slice(0, CHANGE_API.maxChanges);
+        if (newIntradayItems.length > 0 || hasNewAuction) {
+            if (newIntradayItems.length > 0) {
+                let changes = AppState.intradayChanges;
+                changes = changes.concat(newIntradayItems);
+                changes.sort((a, b) => (b.tm || 0) - (a.tm || 0));
+                if (changes.length > CHANGE_API.maxChanges) {
+                    changes = changes.slice(0, CHANGE_API.maxChanges);
+                }
+                AppState.intradayChanges = changes;
             }
-            AppState.intradayChanges = changes;
 
             renderAllChanges();
         }
