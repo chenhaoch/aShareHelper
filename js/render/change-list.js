@@ -60,7 +60,7 @@
                 const price = parseFloat(parts[0]) || 0;
                 const blockShares = parseFloat(parts[1]) || 0;
                 const amount = price * blockShares;
-                return '封单 ' + (amount >= 1e8 ? (amount / 1e8).toFixed(2) + '亿' : (amount / 1e4).toFixed(2) + '万');
+                return '封单' + (amount >= 1e8 ? (amount / 1e8).toFixed(2) + '亿' : (amount / 1e4).toFixed(2) + '万');
             }
             return rawInfo;
         }
