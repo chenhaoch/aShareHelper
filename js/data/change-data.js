@@ -14,6 +14,8 @@
     let _isPolling = false;
     /** 是否首次请求（首次不受交易时段限制） */
     let _firstRequest = true;
+    /** 竞价数据是否已保存（盘中数据首次到达时保存一次） */
+    let _auctionSavedOnce = false;
 
     /**
      * 判断当前是否在交易时段内
@@ -168,6 +170,12 @@
 
         if (newIntradayItems.length > 0 || hasNewAuction) {
             if (newIntradayItems.length > 0) {
+                // ponytail: 首次收到盘中数据时，竞价时段已结束，一次性保存竞价数据
+                if (!_auctionSavedOnce) {
+                    _auctionSavedOnce = true;
+                    StorageManager.saveAuctionData(AppState.persistentAuction);
+                }
+
                 let changes = AppState.intradayChanges;
                 changes = changes.concat(newIntradayItems);
                 changes.sort((a, b) => (b.tm || 0) - (a.tm || 0));

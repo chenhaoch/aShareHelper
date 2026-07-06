@@ -60,8 +60,9 @@
         // 11. 启动异动轮询
         ChangeDataLoader.startPolling(5000);
 
-        // 12. 自动保存竞价数据
-        StorageManager.autoSaveAuction();
+        // 12. 板块缓存自动持久化（5分钟检查一次，有变化才写入 localStorage）
+        // 竞价数据由 change-data.js 在首次收到盘中数据时触发一次性保存
+        StorageManager.autoSaveSectors();
 
         // 13. 更新时间显示
         function updateClock() {

@@ -14,12 +14,18 @@
     /** 缓存有效期（24小时） */
     const CACHE_TTL = 24 * 60 * 60 * 1000;
 
+    /** 板块缓存是否有新数据 */
+    let _sectorsDirty = false;
+
+    // ============================================================
+    //  竞价数据
+    // ============================================================
+
     /**
      * 存储竞价涨停数据（持久化，页面刷新后保留）
      */
     function saveAuctionData(items) {
         try {
-            // 只保存竞价相关的数据（封涨停/封跌停）
             const auctionItems = items.filter(item => {
                 const tm = item.tm || 0;
                 const t = item.t || 0;
@@ -40,6 +46,7 @@
                 date: new Date().toISOString().slice(0, 10),
             };
             localStorage.setItem(STORAGE_KEYS.AUCTION_DATA, JSON.stringify(payload));
+            console.log('[Storage] 写入竞价数据', auctionItems.length, '条');
         } catch (e) {
             console.warn('[Storage] 保存竞价数据失败:', e);
         }
@@ -57,13 +64,14 @@
             const payload = JSON.parse(raw);
             const age = Date.now() - (payload.savedAt || 0);
 
-            // 竞价数据只保留当天
             const today = new Date().toISOString().slice(0, 10);
             if (payload.date !== today || age > CACHE_TTL) {
                 localStorage.removeItem(STORAGE_KEYS.AUCTION_DATA);
+                console.log('[Storage] 竞价数据已过期，已清除');
                 return [];
             }
 
+            console.log('[Storage] 读取竞价数据', (payload.data || []).length, '条');
             return payload.data || [];
         } catch (e) {
             console.warn('[Storage] 读取竞价数据失败:', e);
@@ -93,19 +101,8 @@
         }
     }
 
-    /**
-     * 监听竞价数据变化并自动保存（每30秒检查一次）
-     */
-    function autoSaveAuction() {
-        let lastLength = AppState.persistentAuction.length;
-        setInterval(() => {
-            const currentLength = AppState.persistentAuction.length;
-            if (currentLength > lastLength) {
-                saveAuctionData(AppState.persistentAuction);
-                lastLength = currentLength;
-            }
-        }, 30000);
-    }
+    // ponytail: 不再用定时器轮询保存竞价数据
+    // 由 change-data.js 在首次收到盘中数据时触发一次性保存
 
     // ============================================================
     //  板块数据存储
@@ -122,6 +119,8 @@
                 savedAt: Date.now(),
             };
             localStorage.setItem(STORAGE_KEYS.SECTORS_DATA, JSON.stringify(payload));
+            const count = Object.keys(cache).length;
+            console.log('[Storage] 写入板块缓存', count, '只个股');
         } catch (e) {
             console.warn('[Storage] 保存板块数据失败:', e);
         }
@@ -136,7 +135,10 @@
             const raw = localStorage.getItem(STORAGE_KEYS.SECTORS_DATA);
             if (!raw) return {};
             const payload = JSON.parse(raw);
-            return payload.data || {};
+            const cache = payload.data || {};
+            const count = Object.keys(cache).length;
+            console.log('[Storage] 读取板块缓存', count, '只个股');
+            return cache;
         } catch (e) {
             console.warn('[Storage] 读取板块数据失败:', e);
             return {};
@@ -158,15 +160,27 @@
     }
 
     /**
-     * 保存单个个股的板块数据到 localStorage（合并写入）
+     * 保存单个个股的板块数据（仅内存更新，标记脏标记）
      * @param {string} code
      * @param {Object} data - { sectors: [], updatedAt }
      */
     function saveSingleSector(code, data) {
-        // 先从 localStorage 读取完整缓存再合并，确保不丢失其他线程写入的数据
-        const fullCache = loadAllSectors();
-        fullCache[code] = data;
-        saveAllSectors(fullCache);
+        _sectorsDirty = true;
+        console.log('[Storage] 板块数据已更新到内存 [code:' + code + '] sectors:' + (data.sectors ? data.sectors.length : 0));
+    }
+
+    /**
+     * 自动保存板块缓存（每5分钟检查脏标记，有变化才写入）
+     */
+    function autoSaveSectors() {
+        setInterval(() => {
+            if (!_sectorsDirty) return;
+            _sectorsDirty = false;
+            const cache = AppState.sectorCache;
+            if (cache && Object.keys(cache).length > 0) {
+                saveAllSectors(cache);
+            }
+        }, 300000);
     }
 
     // ============================================================
@@ -177,7 +191,7 @@
         saveAuctionData,
         loadAuctionData,
         restoreAuctionData,
-        autoSaveAuction,
+        autoSaveSectors,
         saveAllSectors,
         loadAllSectors,
         restoreSectorCache,
