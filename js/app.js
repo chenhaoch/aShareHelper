@@ -74,7 +74,6 @@
         setInterval(updateClock, 1000);
 
         console.log('[App] 初始化完成 ✓');
-        console.log(`[App] Lightweight Charts ${LightweightCharts.version || '4.x'}`);
     }
 
     // 根据文档加载状态触发初始化

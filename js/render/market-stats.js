@@ -5,10 +5,9 @@
 (function () {
     'use strict';
 
-    /** 涨跌停趋势图实例 */
-    let _zdtChart = null;
-    let _ztSeries = null;
-    let _dtSeries = null;
+    /** 涨跌停趋势缓存 */
+    let _zdtCanvas = null;
+    let _zdtCtx = null;
     let _lastZDTData = null;
 
     // ============================================================
@@ -111,155 +110,195 @@
     }
 
     // ============================================================
-    //  涨跌停趋势 — Lightweight Charts + 光标标签 + 午休线
+    //  涨跌停趋势 — Canvas 实现
+    //  替换了 Lightweight Charts，使用固定 X 轴 9:30~15:00
     // ============================================================
 
-    function _getNoonTimestamp() {
-        const now = new Date();
-        return Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11, 30, 0).getTime() / 1000);
+    function timeToTradingMinute(timeStr) {
+        if (!timeStr) return -1;
+        const parts = timeStr.split(':');
+        if (parts.length < 2) return -1;
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (h < 11 || (h === 11 && m <= 30)) {
+            const mins = (h - 9) * 60 + (m - 30);
+            return Math.max(0, Math.min(120, mins));
+        }
+        if (h >= 13 && h <= 15) {
+            const mins = (h - 13) * 60 + m + 120;
+            return Math.min(240, Math.max(121, mins));
+        }
+        return -1;
     }
 
-    function _createCrosshairLabel(chart, container) {
-        const label = document.createElement('div');
-        label.className = 'zdt-crosshair-label';
-        label.style.cssText =
-            'position:absolute;bottom:-1px;left:0;' +
-            'background:#1d2129;color:#fff;font-size:10px;' +
-            'padding:0 5px;line-height:16px;border-radius:3px;' +
-            'pointer-events:none;z-index:20;display:none;' +
-            'white-space:nowrap;font-family:-apple-system,sans-serif;';
-        container.appendChild(label);
-
-        chart.subscribeCrosshairMove((param) => {
-            if (!param.time || !param.point || !_lastZDTData) {
-                label.style.display = 'none';
-                return;
-            }
-            const d = new Date(param.time * 1000);
-            const hh = String(d.getHours()).padStart(2, '0');
-            const mm = String(d.getMinutes()).padStart(2, '0');
-
-            // 找到最近的 zt/dtc 值
-            const ts = param.time;
-            let ztc = 0, dtc = 0;
-            const allPts = _lastZDTData.ztPoints || [];
-            for (let i = allPts.length - 1; i >= 0; i--) {
-                if (allPts[i].time <= ts) {
-                    ztc = allPts[i].value;
-                    break;
-                }
-            }
-            const allDtPts = _lastZDTData.dtPoints || [];
-            for (let i = allDtPts.length - 1; i >= 0; i--) {
-                if (allDtPts[i].time <= ts) {
-                    dtc = allDtPts[i].value;
-                    break;
-                }
-            }
-
-            label.textContent = `${hh}:${mm} 涨${ztc} 跌${dtc}`;
-            label.style.display = 'block';
-            const px = Math.round(param.point.x);
-            label.style.left = Math.max(0, Math.min(px - 40, container.clientWidth - 120)) + 'px';
-        });
-    }
-
-    function _updateNoonMarker(chart, container) {
-        if (!chart || !container) return;
-        const old = container.querySelector('.zdt-noon-marker');
-        if (old) old.remove();
-
-        const x = chart.timeScale().timeToCoordinate(_getNoonTimestamp());
-        if (x === null || x <= 0) return;
-
-        const marker = document.createElement('div');
-        marker.className = 'zdt-noon-marker';
-        marker.style.cssText =
-            'position:absolute;left:' + x + 'px;top:0;bottom:0;' +
-            'width:0;border-left:1px dashed #c0c4cc;pointer-events:none;z-index:10;';
-        container.appendChild(marker);
+    function _tsToTimeStr(ts) {
+        const d = new Date(ts * 1000);
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     }
 
     function initZDTChart() {
-        if (_zdtChart) return;
-
         const container = document.getElementById('zdtChart');
         if (!container) return;
 
+        // 已经初始化过且大小没变，复用
+        if (_zdtCanvas) {
+            const rect = container.getBoundingClientRect();
+            const w = Math.max(rect.width, 200);
+            const h = Math.max(rect.height, 100);
+            if (_zdtCanvas.width !== w || _zdtCanvas.height !== h) {
+                // 尺寸变了，重建
+                _zdtCanvas.remove();
+                _zdtCanvas = null;
+                _zdtCtx = null;
+            } else {
+                return;
+            }
+        }
+
+        container.innerHTML = '';
         container.style.position = 'relative';
+
         const rect = container.getBoundingClientRect();
         const w = Math.max(rect.width, 200);
         const h = Math.max(rect.height, 100);
 
-        _zdtChart = LightweightCharts.createChart(container, {
-            width: w,
-            height: h,
-            layout: {
-                background: { type: 'solid', color: '#fafafa' },
-            },
-            grid: {
-                vertLines: { visible: false },
-                horzLines: { visible: false },
-            },
-            crosshair: {
-                mode: LightweightCharts.CrosshairMode.Normal,
-                vertLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed, labelVisible: false },
-                horzLine: { color: '#a0a7b0', width: 0.5, style: LightweightCharts.LineStyle.Dashed, labelVisible: false },
-            },
-            timeScale: {
-                visible: false,
-                timeVisible: false,
-            },
-            rightPriceScale: {
-                visible: false,
-                borderVisible: false,
-            },
-            leftPriceScale: {
-                visible: false,
-            },
-            handleScroll: false,
-            handleScale: false,
-        });
+        const canvas = document.createElement('canvas');
+        canvas.className = 'zdt-canvas';
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = canvas.height = 0; // reset
+        canvas.style.cssText = 'display:block;width:' + w + 'px;height:' + h + 'px;';
+        container.appendChild(canvas);
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
 
-        _ztSeries = _zdtChart.addLineSeries({
-            color: '#e5474a',
-            lineWidth: 1.2,
-            crosshairMarkerVisible: true,
-            crosshairMarkerRadius: 3,
-            lastValueVisible: false,
-            priceLineVisible: false,
-        });
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
 
-        _dtSeries = _zdtChart.addLineSeries({
-            color: '#2d9b4e',
-            lineWidth: 1.2,
-            crosshairMarkerVisible: true,
-            crosshairMarkerRadius: 3,
-            lastValueVisible: false,
-            priceLineVisible: false,
-        });
+        _zdtCanvas = canvas;
+        _zdtCtx = ctx;
+    }
 
-        _createCrosshairLabel(_zdtChart, container);
-        _zdtChart.timeScale().fitContent();
-        setTimeout(() => _updateNoonMarker(_zdtChart, container), 200);
+    function _drawZDT(ztPoints, dtPoints) {
+        if (!_zdtCtx || !_zdtCanvas) return;
+        const ctx = _zdtCtx;
+        const w = _zdtCanvas.width / (window.devicePixelRatio || 1);
+        const h = _zdtCanvas.height / (window.devicePixelRatio || 1);
+
+        ctx.clearRect(0, 0, w, h);
+
+        const pad = { top: 6, bottom: 16, left: 6, right: 6 };
+        const chartW = w - pad.left - pad.right;
+        const chartH = h - pad.top - pad.bottom;
+        if (chartW <= 0 || chartH <= 0) return;
+
+        // 找出所有值（zt + dt）决定 Y 轴范围
+        let allVals = [];
+        ztPoints.forEach(p => allVals.push(p.value));
+        dtPoints.forEach(p => allVals.push(p.value));
+        if (allVals.length === 0) allVals = [0, 1];
+        let minVal = Math.min(...allVals);
+        let maxVal = Math.max(...allVals);
+        const range = maxVal - minVal || 1;
+        const padding = range * 0.1;
+        minVal = Math.max(0, minVal - padding);
+        maxVal += padding;
+
+        // 统一转换点为时间字符串
+        const ztStr = ztPoints.map(p => ({ time: _tsToTimeStr(p.time), value: p.value }));
+        const dtStr = dtPoints.map(p => ({ time: _tsToTimeStr(p.time), value: p.value }));
+
+        function getX(timeStr) {
+            const tm = timeToTradingMinute(timeStr);
+            if (tm < 0) return pad.left;
+            return pad.left + (tm / 240) * chartW;
+        }
+
+        function getY(val) {
+            const ratio = (val - minVal) / (maxVal - minVal);
+            return pad.top + chartH - Math.max(0, Math.min(1, ratio)) * chartH;
+        }
+
+        // 网格线
+        ctx.strokeStyle = '#e8eaed';
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([2, 4]);
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + (chartH / 4) * i;
+            ctx.beginPath();
+            ctx.moveTo(pad.left, y);
+            ctx.lineTo(w - pad.right, y);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        // 11:30 午间分隔虚线
+        const noonX = pad.left + (120 / 240) * chartW;
+        ctx.strokeStyle = '#a0a7b0';
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath();
+        ctx.moveTo(noonX, pad.top);
+        ctx.lineTo(noonX, pad.top + chartH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 绘制线
+        function drawLine(pts, color) {
+            if (pts.length < 2) return;
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            let started = false;
+            for (const p of pts) {
+                const x = getX(p.time);
+                const y = getY(p.value);
+                if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        drawLine(ztStr, '#e5474a');
+        drawLine(dtStr, '#2d9b4e');
+
+        // 最新值端点标记
+        if (ztStr.length > 0) {
+            const last = ztStr[ztStr.length - 1];
+            const lx = getX(last.time);
+            const ly = getY(last.value);
+            ctx.beginPath();
+            ctx.arc(lx, ly, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = '#e5474a';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+        if (dtStr.length > 0) {
+            const last = dtStr[dtStr.length - 1];
+            const lx = getX(last.time);
+            const ly = getY(last.value);
+            ctx.beginPath();
+            ctx.arc(lx, ly, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = '#2d9b4e';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
     }
 
     function renderZDT(data) {
         _lastZDTData = data;
-        if (!_zdtChart) initZDTChart();
-        if (!_ztSeries || !_dtSeries) return;
+        initZDTChart();
+        if (!_zdtCtx) return;
 
         const sorted = (pts) => [...pts].sort((a, b) => a.time - b.time);
-        const ztSorted = sorted(data.ztPoints);
-        const dtSorted = sorted(data.dtPoints);
+        const ztSorted = sorted(data.ztPoints || []);
+        const dtSorted = sorted(data.dtPoints || []);
 
-        _ztSeries.setData(ztSorted);
-        _dtSeries.setData(dtSorted);
-
-        if (_zdtChart) {
-            _zdtChart.timeScale().fitContent();
-            setTimeout(() => _updateNoonMarker(_zdtChart, document.getElementById('zdtChart')), 200);
-        }
+        _drawZDT(ztSorted, dtSorted);
 
         // 更新标题右侧最新值
         const titleEl = document.getElementById('zdtTitle');
