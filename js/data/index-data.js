@@ -9,6 +9,10 @@
     /** 存储所有 SSE 客户端引用 */
     const _sseClients = [];
 
+    // ponytail: SSE 防抖 — 15秒内只处理一次数据
+    const SSE_DEBOUNCE_MS = 15000;
+    const _lastProcessedTime = {};
+
     /**
      * 解析趋势字符串中的时间 "HH:MM"
      */
@@ -253,6 +257,9 @@
         const baseDomain = ndays > 1 ? SSE_BASE.push2his : SSE_BASE.push2;
         const url = `${baseDomain}${SSE_COMMON_PATH}&ndays=${ndays}&secid=${cfg.secId}`;
 
+        // ponytail: 首次数据必须处理（用于初始化昨收价），之后 15s 防抖
+        let _isFirstBatch = true;
+
         const eventSource = new EventSource(url);
         eventSource.onmessage = (event) => {
             try {
@@ -265,6 +272,15 @@
                 if (prePrice === 0 && Array.isArray(data.hisPrePrices) && data.hisPrePrices.length > 0) {
                     AppState.setPrePrice(code, data.hisPrePrices[0].prePrice || 0);
                 }
+
+                // ponytail: SSE 防抖 — 非首次数据 15 秒内跳过
+                if (!_isFirstBatch) {
+                    const now = Date.now();
+                    const last = _lastProcessedTime[code] || 0;
+                    if (now - last < SSE_DEBOUNCE_MS) return;
+                }
+                _isFirstBatch = false;
+                _lastProcessedTime[code] = Date.now();
 
                 if (cfg.isAmount) {
                     handleAmountIndex(code, data.trends);
