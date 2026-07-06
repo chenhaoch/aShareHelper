@@ -109,7 +109,7 @@ body {
     min-height: 130px;
 }
 #panelAuction {
-    min-height: 180px;
+    min-height: 140px;
     flex: 1;
 }
 #panelIntraday {

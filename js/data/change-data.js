@@ -6,6 +6,10 @@
 (function () {
     'use strict';
 
+    // ponytail: 竞价面板异动涨幅阈值，后续可改为可配置
+    // 涨幅超过此值或低于此值的负值会显示在竞价面板
+    const AUCTION_PRICE_THRESHOLD = 0.06; // 6%
+
     /** 轮询标志 */
     let _isPolling = false;
     /** 是否首次请求（首次不受交易时段限制） */
@@ -37,6 +41,28 @@
         if (h === 9 && m > 25) return false;
         if (h > 9) return false;
         return false;
+    }
+
+    /**
+     * 从竞价异动项提取涨幅比例（小数，如 0.06 表示 6%）
+     * type=4(封涨停板): 返回 +0.10
+     * type=8(封跌停板): 返回 -0.10
+     * type=8207(竞价上涨)/8208(竞价下跌): 从 info 数据提取
+     * 其他 type 返回 null
+     */
+    function extractAuctionChangePct(item) {
+        const typeId = item.t || 0;
+        if (typeId === 4) return 0.10;
+        if (typeId === 8) return -0.10;
+        if (typeId === 8207 || typeId === 8208) {
+            const rawInfo = item.i || '';
+            const parts = rawInfo.split(',');
+            if (parts.length >= 1) {
+                const pct = parseFloat(parts[0]);
+                return isNaN(pct) ? null : pct;
+            }
+        }
+        return null;
     }
 
     /**
@@ -109,23 +135,24 @@
             if (!/^(60|00|3|688)\d+$/.test(code)) continue;
             if (/^(\*ST|ST)/.test(name)) continue;
 
-            // 竞价时间内的封涨停/封跌停 → 永久保留
-            if (isChangeAuctionTime(item.tm) && (item.t === 4 || item.t === 8)) {
-                const key = makeChangeKey({
-                    code,
-                    time: item.tm,
-                    price: item.i ? item.i.split(',')[0] : '',
-                });
-                if (!AppState.auctionSet.has(key)) {
-                    AppState.auctionSet.add(key);
-                    AppState.persistentAuction.push(item);
-                    hasNewAuction = true;
+            // 竞价时间：筛选 4(封涨停板)/8(封跌停板)/8207(竞价上涨)/8208(竞价下跌)
+            // 其中 4/8 无条件收录，8207/8208 需 |涨幅| >= 阈值
+            if (isChangeAuctionTime(item.tm)) {
+                const pct = extractAuctionChangePct(item);
+                if (pct !== null && Math.abs(pct) >= AUCTION_PRICE_THRESHOLD) {
+                    const key = makeChangeKey({
+                        code,
+                        time: item.tm,
+                        price: item.i ? item.i.split(',')[0] : '',
+                    });
+                    if (!AppState.auctionSet.has(key)) {
+                        AppState.auctionSet.add(key);
+                        AppState.persistentAuction.push(item);
+                        hasNewAuction = true;
+                    }
                 }
                 continue;
             }
-
-            // 跳过竞价时段的其他类型
-            if (isChangeAuctionTime(item.tm)) continue;
 
             // 盘中数据
             const key = makeChangeKey({

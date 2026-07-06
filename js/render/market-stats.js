@@ -14,14 +14,7 @@
     //  涨跌分布 — 水平条形图（所有柱向上）
     // ============================================================
 
-    const FENBU_LABELS = {
-        '-11': '跌停', '-10': '', '-9': '', '-8': '', '-7': '', '-6': '',
-        '-5': '-5%', '-4': '', '-3': '', '-2': '', '-1': '',
-        '0': '0',
-        '1': '', '2': '', '3': '', '4': '', '5': '+5%',
-        '6': '', '7': '', '8': '', '9': '', '10': '',
-        '11': '涨停',
-    };
+    // ponytail: 只保留柱状图，不显示 X 轴标签
 
     function renderZDFB(data) {
         const container = document.getElementById('zdfbChart');
@@ -51,9 +44,10 @@
         const ctx = canvas.getContext('2d');
         ctx.scale(dpr, dpr);
 
-        const padLeft = 44;
-        const padRight = 44;
-        const padBottom = 18;
+        // ponytail: 移除 X 轴标签空间，柱状图撑满
+        const padLeft = 0;
+        const padRight = 0;
+        const padBottom = 4;
         const chartW = w - padLeft - padRight;
         const chartH = h - padBottom;
 
@@ -86,16 +80,6 @@
                 const color = g.idx < 0 ? '#2d9b4e' : (g.idx > 0 ? '#e5474a' : '#86909c');
                 ctx.fillStyle = color;
                 ctx.fillRect(x + 1, baseY - barH, barW - 2, barH);
-            }
-
-            // 标签
-            const label = FENBU_LABELS[String(g.idx)];
-            if (label) {
-                ctx.fillStyle = '#86909c';
-                ctx.font = '9px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                ctx.fillText(label, x + barW / 2, baseY + 2);
             }
 
             // 数值

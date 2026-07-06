@@ -79,7 +79,9 @@
         }
         if (typeId === 8201 || typeId === 8202 || typeId === 8203 || typeId === 8204) {
             if (parts.length >= 1) {
-                return (parseFloat(parts[0]) * 100).toFixed(2) + '%';
+                const pct = (parseFloat(parts[0]) * 100);
+                const sign = pct > 0 ? '+' : '';
+                return sign + pct.toFixed(2) + '%';
             }
             return rawInfo;
         }

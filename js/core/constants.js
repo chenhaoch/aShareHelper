@@ -54,7 +54,7 @@ const CHANGE_API = {
     baseUrl: 'https://push2ex.eastmoney.com/getAllStockChanges',
     ut: '7eea3edcaed734bea9cbfc24409ed989',
     dpt: 'wzchanges',
-    types: '8201,8202,8193,4,32,64,8204,8203,8194,8,16,128',
+    types: '8201,8202,8193,4,32,64,8204,8203,8194,8,16,128,8207,8208',
     pagesize: 64,
     pollingInterval: 5000,
     maxIntradayItems: 200,
