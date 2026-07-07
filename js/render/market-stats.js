@@ -246,31 +246,7 @@
         drawLine(ztStr, '#e5474a');
         drawLine(dtStr, '#2d9b4e');
 
-        // 最新值端点标记
-        if (ztStr.length > 0) {
-            const last = ztStr[ztStr.length - 1];
-            const lx = getX(last.time);
-            const ly = getY(last.value);
-            ctx.beginPath();
-            ctx.arc(lx, ly, 3, 0, 2 * Math.PI);
-            ctx.fillStyle = '#e5474a';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-        }
-        if (dtStr.length > 0) {
-            const last = dtStr[dtStr.length - 1];
-            const lx = getX(last.time);
-            const ly = getY(last.value);
-            ctx.beginPath();
-            ctx.arc(lx, ly, 3, 0, 2 * Math.PI);
-            ctx.fillStyle = '#2d9b4e';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-        }
+        // ponytail: 移除端点圆点，纯折线图
     }
 
     function renderZDT(data) {
