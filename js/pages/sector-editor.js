@@ -30,6 +30,23 @@
         document.getElementById('btnSaveManual').addEventListener('click', saveManualSectors);
         document.getElementById('searchMaintained').addEventListener('input', refreshMaintainedList);
         document.getElementById('btnRefreshList').addEventListener('click', refreshMaintainedList);
+        document.getElementById('btnBatchDelete').addEventListener('click', function () {
+            document.getElementById('batchDeletePanel').style.display = 'block';
+            document.getElementById('batchSectorName').value = '';
+            document.getElementById('batchResultArea').style.display = 'none';
+            document.getElementById('batchSectorName').focus();
+        });
+        document.getElementById('btnBatchClose').addEventListener('click', function () {
+            document.getElementById('batchDeletePanel').style.display = 'none';
+        });
+        document.getElementById('btnBatchFind').addEventListener('click', batchFindSector);
+        document.getElementById('batchSectorName').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') batchFindSector();
+        });
+        document.getElementById('btnBatchConfirm').addEventListener('click', batchConfirmDelete);
+        document.getElementById('btnBatchCancel').addEventListener('click', function () {
+            document.getElementById('batchDeletePanel').style.display = 'none';
+        });
     }
 
     // ============================================================
@@ -257,6 +274,54 @@
         el.style.display = 'block';
         el.className = 'result-box ' + (type || 'info');
         el.innerHTML = '<pre>' + msg + '</pre>';
+    }
+
+    // ============================================================
+    //  4. 批量删除板块
+    // ============================================================
+    var _batchSectorName = '';
+
+    function batchFindSector() {
+        var name = document.getElementById('batchSectorName').value.trim();
+        if (!name) return;
+        _batchSectorName = name;
+        var stocks = SectorData.findStocksBySector(name);
+        var resultArea = document.getElementById('batchResultArea');
+        var infoEl = document.getElementById('batchMatchInfo');
+        var listEl = document.getElementById('batchStockList');
+
+        if (stocks.length === 0) {
+            infoEl.textContent = '未找到含 "' + name + '" 相关板块的个股';
+            listEl.innerHTML = '';
+            resultArea.style.display = 'block';
+            return;
+        }
+
+        infoEl.textContent = '匹配到 ' + stocks.length + ' 只个股（模糊匹配 "' + name + '"）：';
+        listEl.innerHTML = '';
+        for (var i = 0; i < stocks.length; i++) {
+            var item = document.createElement('div');
+            item.className = 'stock-item';
+            item.innerHTML = '<span class="code">' + stocks[i].code + '</span>' + stocks[i].stockName + ' <span class="sector-tag" style="font-size:10px;">' + stocks[i].matchedSector + '</span>';
+            listEl.appendChild(item);
+        }
+        resultArea.style.display = 'block';
+    }
+
+    function batchConfirmDelete() {
+        if (!_batchSectorName) return;
+        if (!confirm('确认从所有个股中删除匹配 "' + _batchSectorName + '" 的板块？此操作不可撤销。')) return;
+        var result = SectorData.batchRemoveSector(_batchSectorName);
+        document.getElementById('batchDeletePanel').style.display = 'none';
+        refreshMaintainedList();
+        if (result.affected > 0) {
+            var removedStr = result.removed.slice(0, 5).join('、');
+            if (result.removed.length > 5) removedStr += ' 等';
+            Toast.success('已从 ' + result.affected + ' 只个股中删除 ' + result.removed.length + ' 个板块：' + removedStr);
+        } else {
+            Toast.info('没有符合的板块数据需要删除');
+        }
+        _batchSectorName = '';
     }
 
     if (document.readyState === 'loading') {

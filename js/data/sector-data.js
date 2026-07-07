@@ -263,6 +263,61 @@
     }
 
     /**
+     * 批量移除匹配关键词的板块：遍历所有缓存个股，从每个个股的板块列表中删除所有模糊匹配的板块
+     * @param {string} keyword - 板块关键词（模糊匹配，大小写不敏感）
+     * @returns {{ affected: number, removed: string[] }} 受影响的个股数量和删除的板块名称列表
+     */
+    function batchRemoveSector(keyword) {
+        if (!keyword) return { affected: 0, removed: [] };
+        const kw = keyword.toLowerCase();
+        const cache = AppState.sectorCache;
+        let affected = 0;
+        const removedSet = new Set();
+        for (const code in cache) {
+            const data = cache[code];
+            if (!data || !Array.isArray(data.sectors) || data.sectors.length === 0) continue;
+            const before = data.sectors.length;
+            var newSectors = [];
+            for (var j = 0; j < data.sectors.length; j++) {
+                if (data.sectors[j].name.toLowerCase().indexOf(kw) !== -1) {
+                    removedSet.add(data.sectors[j].name);
+                } else {
+                    newSectors.push(data.sectors[j]);
+                }
+            }
+            data.sectors = newSectors;
+            if (data.sectors.length !== before) {
+                affected++;
+                StorageManager.saveSingleSector(code, data);
+            }
+        }
+        return { affected: affected, removed: Array.from(removedSet) };
+    }
+
+    /**
+     * 模糊查找包含指定板块的所有个股
+     * @param {string} keyword - 板块名称关键词（模糊匹配，大小写不敏感）
+     * @returns {Array<{code: string, stockName: string, matchedSector: string}>}
+     */
+    function findStocksBySector(keyword) {
+        if (!keyword) return [];
+        const kw = keyword.toLowerCase();
+        const cache = AppState.sectorCache;
+        const result = [];
+        for (const code in cache) {
+            const data = cache[code];
+            if (!data || !Array.isArray(data.sectors)) continue;
+            for (var j = 0; j < data.sectors.length; j++) {
+                if (data.sectors[j].name.toLowerCase().indexOf(kw) !== -1) {
+                    result.push({ code: code, stockName: data.stockName || '--', matchedSector: data.sectors[j].name });
+                    break;  // ponytail: 一个股只记录一次
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * 初始化：从 localStorage 恢复板块缓存到内存
      */
     function initSectorData() {
@@ -314,6 +369,8 @@
         mergeJiuyanSector,
         mergeManualSectors,
         replaceSectors,
+        batchRemoveSector,
+        findStocksBySector,
         initSectorData,
         getSourceLabel,
         getAllCachedCodes,
