@@ -115,10 +115,10 @@
     /**
      * 加载异动数据
      */
-    async function loadChanges() {
+    async function loadChanges(pageindex=0) {
         // 首次请求不受交易时段限制（确保开盘前能获取竞价数据）
         // 之后的轮询只在交易时段内发送
-        if (!_firstRequest && !isTradingTime()) return;
+        if (!_firstRequest && !isTradingTime() && pageindex==0) return;
 
         if (_isPolling) return; // 防抖：上次请求未完成跳过
         _isPolling = true;
@@ -127,7 +127,7 @@
         const cb = `jQuery_${t}`;
         const url =
             `${CHANGE_API.baseUrl}?type=${CHANGE_API.types}&cb=${cb}` +
-            `&pageindex=0&pagesize=${CHANGE_API.pagesize}` +
+            `&pageindex=${pageindex || 0}&pagesize=${CHANGE_API.pagesize}` +
             `&dpt=${CHANGE_API.dpt}&ut=${CHANGE_API.ut}&_=${t}`;
 
         try {

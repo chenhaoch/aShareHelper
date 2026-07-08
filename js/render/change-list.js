@@ -79,7 +79,7 @@
             }
             return rawInfo;
         }
-        if (typeId === 8201 || typeId === 8202 || typeId === 8203 || typeId === 8204) {
+        if (typeId === 8201 || typeId === 8202 || typeId === 8203 || typeId === 8204 || typeId === 8208 || typeId === 8207) {
             if (parts.length >= 1) {
                 const pct = (parseFloat(parts[0]) * 100);
                 const sign = pct > 0 ? '+' : '';
