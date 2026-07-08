@@ -6,10 +6,6 @@
 (function () {
     'use strict';
 
-    // ponytail: 竞价面板异动涨幅阈值，后续可改为可配置
-    // 涨幅超过此值或低于此值的负值会显示在竞价面板
-    const AUCTION_PRICE_THRESHOLD = 0.06; // 6%
-
     /** 轮询标志 */
     let _isPolling = false;
     /** 是否首次请求（首次不受交易时段限制） */
@@ -32,39 +28,71 @@
     }
 
     /**
-     * 判断是否为竞价时间（9:25 之前）
+     * 统一异动过滤：code格式、名称、各类型阈值
+     * @param {object} item - 单条异动数据
+     * @param {boolean} isAuction - 是否为竞价时段（由调用方传入）
      */
-    function isChangeAuctionTime(tm) {
-        const s = String(tm).padStart(6, '0');
-        const h = parseInt(s.slice(0, 2), 10);
-        const m = parseInt(s.slice(2, 4), 10);
-        if (h < 9) return false;
-        if (h === 9 && m <= 25) return true;
-        if (h === 9 && m > 25) return false;
-        if (h > 9) return false;
-        return false;
-    }
+    function shouldKeepChangeItem(item, isAuction) {
+        const code = item.c || '';
+        const name = item.n || '';
 
-    /**
-     * 从竞价异动项提取涨幅比例（小数，如 0.06 表示 6%）
-     * type=4(封涨停板): 返回 +0.10
-     * type=8(封跌停板): 返回 -0.10
-     * type=8207(竞价上涨)/8208(竞价下跌): 从 info 数据提取
-     * 其他 type 返回 null
-     */
-    function extractAuctionChangePct(item) {
-        const typeId = item.t || 0;
-        if (typeId === 4) return 0.10;
-        if (typeId === 8) return -0.10;
-        if (typeId === 8207 || typeId === 8208) {
-            const rawInfo = item.i || '';
-            const parts = rawInfo.split(',');
-            if (parts.length >= 1) {
-                const pct = parseFloat(parts[0]);
-                return isNaN(pct) ? null : pct;
-            }
+        // 1. 代码格式过滤
+        if (!/^(60|00|3|688)\d+$/.test(code)) {
+            console.log('[ChangeData] 过滤: 代码格式不匹配', { code, name, type: typeId, tm });
+            return false;
         }
-        return null;
+        // 2. 名称 ST 过滤
+        if (/^(\*ST|ST)/.test(name)) {
+            console.log('[ChangeData] 过滤: ST', { code, name, type: typeId, tm });
+            return false;
+        }
+
+        const typeId = item.t || 0;
+        const parts = (item.i || '').split(',');
+        const tm = item.tm || 0;
+        if (isAuction) {
+            // 竞价只保留 4(封涨停)、8(封跌停)、8207(竞价上涨≥6%)、8208(竞价下跌≤-6%)
+            if (typeId === 4 || typeId === 8) return true;
+            if (typeId === 8207) {
+                const pct = parseFloat(parts[0]);
+                if (isNaN(pct) || pct <= 0.06) {
+                    console.log('[ChangeData] 过滤: 竞价上涨涨幅不足', { code, name, type: typeId, pct, tm });
+                    return false;
+                }
+                return true;
+            }
+            if (typeId === 8208) {
+                const pct = parseFloat(parts[0]);
+                if (isNaN(pct) || pct >= -0.06) {
+                    console.log('[ChangeData] 过滤: 竞价下跌跌幅不足', { code, name, type: typeId, pct, tm });
+                    return false;
+                }
+                return true;
+            }
+            console.log('[ChangeData] 过滤: 竞价时段非4/8/8207/8208类型', { code, name, type: typeId, tm });
+            return false;
+        }
+
+        // 盘中：大买/大卖类型需成交额 >1000 万
+        if (typeId === 64 || typeId === 128 || typeId === 8193 || typeId === 8194) {
+            const turnover = parseFloat(parts[3]) || 0;
+            if (turnover <= 1e7) {
+                console.log('[ChangeData] 过滤: 成交额不足1000万', { code, name, type: typeId, turnover, tm });
+                return false;
+            }
+            return true;
+        }
+        // 盘中：火箭发射/快速反弹需涨幅 >7%
+        if (typeId === 8201 || typeId === 8202) {
+            const pct = parseFloat(parts[0]);
+            if (isNaN(pct) || pct <= 0.07) {
+                console.log('[ChangeData] 过滤: 涨幅不足7%', { code, name, type: typeId, pct, tm });
+                return false;
+            }
+            return true;
+        }
+        // 其他类型直接通过
+        return true;
     }
 
     /**
@@ -124,48 +152,51 @@
     }
 
     /**
+     * 判断条目时间是否属于竞价时段（<9:30）
+     */
+    function isAuctionTime(tm) {
+        const s = String(tm || 0).padStart(6, '0');
+        const hh = parseInt(s.slice(0, 2), 10);
+        const mm = parseInt(s.slice(2, 4), 10);
+        return hh < 9 || (hh === 9 && mm < 30);
+    }
+
+    /**
      * 处理异动条目：过滤、去重、分类
      */
     function processChangeItems(list) {
         let newIntradayItems = [];
         let hasNewAuction = false;
 
+        const isAuction = isAuctionTime(item.tm);
         for (const item of list) {
+            // 统一过滤，传入 isAuction 避免重复解析时间
+            if (!shouldKeepChangeItem(item, isAuction)) continue;
+
             const code = item.c || '';
-            const name = item.n || '';
-            // 股票代码过滤
-            if (!/^(60|00|3|688)\d+$/.test(code)) continue;
-            if (/^(\*ST|ST)/.test(name)) continue;
 
-            // 竞价时间：筛选 4(封涨停板)/8(封跌停板)/8207(竞价上涨)/8208(竞价下跌)
-            // 其中 4/8 无条件收录，8207/8208 需 |涨幅| >= 阈值
-            if (isChangeAuctionTime(item.tm)) {
-                const pct = extractAuctionChangePct(item);
-                if (pct !== null && Math.abs(pct) >= AUCTION_PRICE_THRESHOLD) {
-                    const key = makeChangeKey({
-                        code,
-                        time: item.tm,
-                        price: item.i ? item.i.split(',')[0] : '',
-                    });
-                    if (!AppState.auctionSet.has(key)) {
-                        AppState.auctionSet.add(key);
-                        // ponytail: 接口按时间降序返回，新数据插到前面，渲染时无需再排序
-                        AppState.persistentAuction.unshift(item);
-                        hasNewAuction = true;
-                    }
+            if (isAuction) {
+                const key = makeChangeKey({
+                    code,
+                    time: item.tm,
+                    price: item.i ? item.i.split(',')[0] : '',
+                });
+                if (!AppState.auctionSet.has(key)) {
+                    AppState.auctionSet.add(key);
+                    // ponytail: 接口按时间降序返回，新数据插到前面，渲染时无需再排序
+                    AppState.persistentAuction.unshift(item);
+                    hasNewAuction = true;
                 }
-                continue;
-            }
-
-            // 盘中数据
-            const key = makeChangeKey({
-                code,
-                time: item.tm,
-                price: item.i ? item.i.split(',')[0] : '',
-            });
-            if (!AppState.changeSet.has(key)) {
-                AppState.changeSet.add(key);
-                newIntradayItems.push(item);
+            } else {
+                const key = makeChangeKey({
+                    code,
+                    time: item.tm,
+                    price: item.i ? item.i.split(',')[0] : '',
+                });
+                if (!AppState.changeSet.has(key)) {
+                    AppState.changeSet.add(key);
+                    newIntradayItems.push(item);
+                }
             }
         }
 
