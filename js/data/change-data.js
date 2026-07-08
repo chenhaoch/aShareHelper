@@ -6,10 +6,6 @@
 (function () {
     'use strict';
 
-    // ponytail: 竞价面板异动涨幅阈值，后续可改为可配置
-    // 涨幅超过此值或低于此值的负值会显示在竞价面板
-    const AUCTION_PRICE_THRESHOLD = 0.06; // 6%
-
     /** 轮询标志 */
     let _isPolling = false;
     /** 是否首次请求（首次不受交易时段限制） */
@@ -32,39 +28,64 @@
     }
 
     /**
-     * 判断是否为竞价时间（9:25 之前）
+     * 统一异动过滤：code格式、名称、各类型阈值
+     * @param {object} item - 单条异动数据
+     * @param {boolean} isAuction - 是否为竞价时段（由调用方传入）
      */
-    function isChangeAuctionTime(tm) {
-        const s = String(tm).padStart(6, '0');
-        const h = parseInt(s.slice(0, 2), 10);
-        const m = parseInt(s.slice(2, 4), 10);
-        if (h < 9) return false;
-        if (h === 9 && m <= 25) return true;
-        if (h === 9 && m > 25) return false;
-        if (h > 9) return false;
-        return false;
-    }
+    function shouldKeepChangeItem(item, isAuction) {
+        const code = item.c || '';
+        const name = item.n || '';
 
-    /**
-     * 从竞价异动项提取涨幅比例（小数，如 0.06 表示 6%）
-     * type=4(封涨停板): 返回 +0.10
-     * type=8(封跌停板): 返回 -0.10
-     * type=8207(竞价上涨)/8208(竞价下跌): 从 info 数据提取
-     * 其他 type 返回 null
-     */
-    function extractAuctionChangePct(item) {
-        const typeId = item.t || 0;
-        if (typeId === 4) return 0.10;
-        if (typeId === 8) return -0.10;
-        if (typeId === 8207 || typeId === 8208) {
-            const rawInfo = item.i || '';
-            const parts = rawInfo.split(',');
-            if (parts.length >= 1) {
-                const pct = parseFloat(parts[0]);
-                return isNaN(pct) ? null : pct;
-            }
+        // 1. 代码格式过滤
+        if (!/^(60|00|3|688)\d+$/.test(code)) {
+            return false;
         }
-        return null;
+        // 2. 名称 ST 过滤
+        if (/^(\*ST|ST)/.test(name)) {
+            return false;
+        }
+
+        const typeId = item.t || 0;
+        const parts = (item.i || '').split(',');
+        const tm = item.tm || 0;
+        if (isAuction) {
+            // 竞价只保留 4(封涨停)、8(封跌停)、8207(竞价上涨≥6%)、8208(竞价下跌≤-6%)
+            if (typeId === 4 || typeId === 8) return true;
+            if (typeId === 8207) {
+                const pct = parseFloat(parts[0]);
+                if (isNaN(pct) || pct <= 0.06) {
+                    return false;
+                }
+                return true;
+            }
+            if (typeId === 8208) {
+                const pct = parseFloat(parts[0]);
+                if (isNaN(pct) || pct >= -0.06) {
+                    return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        // 盘中：大买/大卖类型需成交额 >1000 万
+        if (typeId === 64 || typeId === 128 || typeId === 8193 || typeId === 8194) {
+            const turnover = parseFloat(parts[3]) || 0;
+            if (turnover <= 1e7) {
+                return false;
+            }
+            return true;
+        }
+        // 盘中：火箭发射/快速反弹需涨幅 >7%
+        if (typeId === 8201 || typeId === 8202) {
+            const pct = parseFloat(parts[0]);
+            if (isNaN(pct) || pct <= 0.07) {
+                return false;
+            }
+            return true;
+        }
+        // 其他类型直接通过
+        return true;
     }
 
     /**
@@ -94,10 +115,10 @@
     /**
      * 加载异动数据
      */
-    async function loadChanges() {
+    async function loadChanges(pageindex=0) {
         // 首次请求不受交易时段限制（确保开盘前能获取竞价数据）
         // 之后的轮询只在交易时段内发送
-        if (!_firstRequest && !isTradingTime()) return;
+        if (!_firstRequest && !isTradingTime() && pageindex==0) return;
 
         if (_isPolling) return; // 防抖：上次请求未完成跳过
         _isPolling = true;
@@ -106,7 +127,7 @@
         const cb = `jQuery_${t}`;
         const url =
             `${CHANGE_API.baseUrl}?type=${CHANGE_API.types}&cb=${cb}` +
-            `&pageindex=0&pagesize=${CHANGE_API.pagesize}` +
+            `&pageindex=${pageindex || 0}&pagesize=${CHANGE_API.pagesize}` +
             `&dpt=${CHANGE_API.dpt}&ut=${CHANGE_API.ut}&_=${t}`;
 
         try {
@@ -124,6 +145,16 @@
     }
 
     /**
+     * 判断条目时间是否属于竞价时段（<9:30）
+     */
+    function isAuctionTime(tm) {
+        const s = String(tm || 0).padStart(6, '0');
+        const hh = parseInt(s.slice(0, 2), 10);
+        const mm = parseInt(s.slice(2, 4), 10);
+        return hh < 9 || (hh === 9 && mm < 30);
+    }
+
+    /**
      * 处理异动条目：过滤、去重、分类
      */
     function processChangeItems(list) {
@@ -131,40 +162,33 @@
         let hasNewAuction = false;
 
         for (const item of list) {
+            const isAuction = isAuctionTime(item.tm);
+            // 统一过滤，传入 isAuction 避免重复解析时间
+            if (!shouldKeepChangeItem(item, isAuction)) continue;
+
             const code = item.c || '';
-            const name = item.n || '';
-            // 股票代码过滤
-            if (!/^(60|00|3|688)\d+$/.test(code)) continue;
-            if (/^(\*ST|ST)/.test(name)) continue;
-
-            // 竞价时间：筛选 4(封涨停板)/8(封跌停板)/8207(竞价上涨)/8208(竞价下跌)
-            // 其中 4/8 无条件收录，8207/8208 需 |涨幅| >= 阈值
-            if (isChangeAuctionTime(item.tm)) {
-                const pct = extractAuctionChangePct(item);
-                if (pct !== null && Math.abs(pct) >= AUCTION_PRICE_THRESHOLD) {
-                    const key = makeChangeKey({
-                        code,
-                        time: item.tm,
-                        price: item.i ? item.i.split(',')[0] : '',
-                    });
-                    if (!AppState.auctionSet.has(key)) {
-                        AppState.auctionSet.add(key);
-                        AppState.persistentAuction.push(item);
-                        hasNewAuction = true;
-                    }
+            if (isAuction) {
+                const key = makeChangeKey({
+                    code,
+                    time: item.tm,
+                    price: item.i ? item.i.split(',')[0] : '',
+                });
+                if (!AppState.auctionSet.has(key)) {
+                    AppState.auctionSet.add(key);
+                    // ponytail: 接口按时间降序返回，新数据插到前面，渲染时无需再排序
+                    AppState.persistentAuction.unshift(item);
+                    hasNewAuction = true;
                 }
-                continue;
-            }
-
-            // 盘中数据
-            const key = makeChangeKey({
-                code,
-                time: item.tm,
-                price: item.i ? item.i.split(',')[0] : '',
-            });
-            if (!AppState.changeSet.has(key)) {
-                AppState.changeSet.add(key);
-                newIntradayItems.push(item);
+            } else {
+                const key = makeChangeKey({
+                    code,
+                    time: item.tm,
+                    price: item.i ? item.i.split(',')[0] : '',
+                });
+                if (!AppState.changeSet.has(key)) {
+                    AppState.changeSet.add(key);
+                    newIntradayItems.push(item);
+                }
             }
         }
 
@@ -176,13 +200,10 @@
                     StorageManager.saveAuctionData(AppState.persistentAuction);
                 }
 
-                let changes = AppState.intradayChanges;
-                changes = changes.concat(newIntradayItems);
-                changes.sort((a, b) => (b.tm || 0) - (a.tm || 0));
-                if (changes.length > CHANGE_API.maxChanges) {
-                    changes = changes.slice(0, CHANGE_API.maxChanges);
-                }
-                AppState.intradayChanges = changes;
+                // ponytail: 接口按时间降序返回，新数据 concat 在前面保持顺序，无需再 sort
+                AppState.intradayChanges = newIntradayItems.concat(
+                    AppState.intradayChanges
+                ).slice(0, CHANGE_API.maxChanges);
             }
 
             renderAllChanges();
@@ -193,9 +214,8 @@
      * 渲染所有异动列表
      */
     function renderAllChanges() {
-        const auctionItems = AppState.persistentAuction
-            .slice()
-            .sort((a, b) => (b.tm || 0) - (a.tm || 0));
+        // ponytail: 数据在 processChangeItems 中已按时间降序排列，渲染时无需再排序
+        const auctionItems = AppState.persistentAuction.slice();
 
         const intradayItems = AppState.intradayChanges.slice(0, CHANGE_API.maxIntradayItems);
 

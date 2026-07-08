@@ -67,6 +67,32 @@
                 <div class="search-bar">
                     <input type="text" id="searchMaintained" placeholder="搜索代码或板块名称..." />
                     <button class="btn btn-default" id="btnRefreshList">刷新</button>
+                    <button class="btn btn-danger" id="btnBatchDelete">批量删除</button>
+                </div>
+                <div class="batch-delete-panel" id="batchDeletePanel" style="display:none;">
+                    <div class="batch-delete-header">
+                        <span>🗑️ 批量删除板块</span>
+                        <span class="batch-close" id="btnBatchClose">✕</span>
+                    </div>
+                    <div class="batch-delete-body">
+                        <div class="form-row">
+                            <div class="form-group" style="flex:1;">
+                                <label>输入要删除的板块名称</label>
+                                <input type="text" id="batchSectorName" placeholder="例如：机器人" />
+                            </div>
+                            <div class="form-group" style="flex:0 0 auto;">
+                                <button class="btn btn-default" id="btnBatchFind" style="margin-top:16px;">查找匹配</button>
+                            </div>
+                        </div>
+                        <div id="batchResultArea" style="display:none;">
+                            <div class="batch-match-info" id="batchMatchInfo"></div>
+                            <div class="batch-stock-list" id="batchStockList"></div>
+                            <div class="batch-actions">
+                                <button class="btn btn-danger" id="btnBatchConfirm">确认删除此板块</button>
+                                <button class="btn btn-default" id="btnBatchCancel">取消</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="scrollable-table" id="maintainedTableWrapper">
                     <table class="sector-table" id="maintainedTable">
@@ -92,6 +118,8 @@
     <script src="js/core/constants.js"></script>
     <script src="js/core/event-bus.js"></script>
     <script src="js/core/state.js"></script>
+    <!-- 通用组件 -->
+    <script src="js/components/toast.js"></script>
     <!-- 数据模块 -->
     <script src="js/data/storage.js"></script>
     <script src="js/data/sector-data.js"></script>

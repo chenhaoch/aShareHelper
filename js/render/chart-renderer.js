@@ -249,19 +249,11 @@
             drawLine(comparePoints, '#2d9b4e', 1.6);
         }
 
-        // 最新值标记
+        // 最新值标记（只保留文字标签，去掉端点圆点）
         if (points.length > 0) {
             const last = points[points.length - 1];
             const lx = getX(last.time);
             const ly = getY(last.value);
-            ctx.beginPath();
-            ctx.arc(lx, ly, 4, 0, 2 * Math.PI);
-            ctx.fillStyle = cfg ? cfg.color : '#1890ff';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
             ctx.fillStyle = cfg ? cfg.color : '#1890ff';
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'left';
@@ -282,7 +274,7 @@
             ctx.fillText(label, lx + 6, ly - 2);
         }
 
-        // 昨日成交额标记
+        // 昨日成交额标记（只保留文字标签，去掉端点圆点）
         if (isAmount && comparePoints.length > 0) {
             const lastC = comparePoints[comparePoints.length - 1];
             const cx = getX(lastC.time);
@@ -292,13 +284,6 @@
             ctx.textAlign = 'right';
             ctx.textBaseline = 'bottom';
             ctx.fillText('昨 ' + formatAmount(lastC.value), cx - 4, cy - 2);
-            ctx.beginPath();
-            ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
-            ctx.fillStyle = '#2d9b4e';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
         }
     }
 

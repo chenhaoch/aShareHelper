@@ -16,8 +16,10 @@
             div.innerHTML =
                 '<span class="time"></span>' +
                 '<span class="type-indicator"></span>' +
-                '<span class="name"></span>' +
-                '<span class="code"></span>' +
+                '<span class="name-stack">' +
+                '  <span class="name"></span>' +
+                '  <span class="code"></span>' +
+                '</span>' +
                 '<span class="type-name"></span>' +
                 '<span class="desc"></span>' +
                 '<span class="sector-tags"></span>';
@@ -60,7 +62,7 @@
                 const price = parseFloat(parts[0]) || 0;
                 const blockShares = parseFloat(parts[1]) || 0;
                 const amount = price * blockShares;
-                return '封单' + (amount >= 1e8 ? (amount / 1e8).toFixed(2) + '亿' : (amount / 1e4).toFixed(2) + '万');
+                return '封单' + (amount >= 1e7 ? (amount / 1e8).toFixed(2) + '亿' : (amount / 1e4).toFixed(2) + '万');
             }
             return rawInfo;
         }
@@ -73,11 +75,11 @@
         if (typeId === 64 || typeId === 128 || typeId === 8193 || typeId === 8194) {
             if (parts.length >= 4) {
                 const turnover = parseFloat(parts[3]) || 0;
-                return turnover >= 1e8 ? (turnover / 1e8).toFixed(2) + '亿' : (turnover / 1e4).toFixed(2) + '万';
+                return turnover >= 1e7 ? (turnover / 1e8).toFixed(2) + '亿' : (turnover / 1e4).toFixed(2) + '万';
             }
             return rawInfo;
         }
-        if (typeId === 8201 || typeId === 8202 || typeId === 8203 || typeId === 8204) {
+        if (typeId === 8201 || typeId === 8202 || typeId === 8203 || typeId === 8204 || typeId === 8208 || typeId === 8207) {
             if (parts.length >= 1) {
                 const pct = (parseFloat(parts[0]) * 100);
                 const sign = pct > 0 ? '+' : '';
