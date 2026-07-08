@@ -38,12 +38,10 @@
 
         // 1. 代码格式过滤
         if (!/^(60|00|3|688)\d+$/.test(code)) {
-            console.log('[ChangeData] 过滤: 代码格式不匹配', { code, name, type: typeId, tm });
             return false;
         }
         // 2. 名称 ST 过滤
         if (/^(\*ST|ST)/.test(name)) {
-            console.log('[ChangeData] 过滤: ST', { code, name, type: typeId, tm });
             return false;
         }
 
@@ -56,7 +54,6 @@
             if (typeId === 8207) {
                 const pct = parseFloat(parts[0]);
                 if (isNaN(pct) || pct <= 0.06) {
-                    console.log('[ChangeData] 过滤: 竞价上涨涨幅不足', { code, name, type: typeId, pct, tm });
                     return false;
                 }
                 return true;
@@ -64,12 +61,10 @@
             if (typeId === 8208) {
                 const pct = parseFloat(parts[0]);
                 if (isNaN(pct) || pct >= -0.06) {
-                    console.log('[ChangeData] 过滤: 竞价下跌跌幅不足', { code, name, type: typeId, pct, tm });
                     return false;
                 }
                 return true;
             }
-            console.log('[ChangeData] 过滤: 竞价时段非4/8/8207/8208类型', { code, name, type: typeId, tm });
             return false;
         }
 
@@ -77,7 +72,6 @@
         if (typeId === 64 || typeId === 128 || typeId === 8193 || typeId === 8194) {
             const turnover = parseFloat(parts[3]) || 0;
             if (turnover <= 1e7) {
-                console.log('[ChangeData] 过滤: 成交额不足1000万', { code, name, type: typeId, turnover, tm });
                 return false;
             }
             return true;
@@ -86,7 +80,6 @@
         if (typeId === 8201 || typeId === 8202) {
             const pct = parseFloat(parts[0]);
             if (isNaN(pct) || pct <= 0.07) {
-                console.log('[ChangeData] 过滤: 涨幅不足7%', { code, name, type: typeId, pct, tm });
                 return false;
             }
             return true;
@@ -168,13 +161,12 @@
         let newIntradayItems = [];
         let hasNewAuction = false;
 
-        const isAuction = isAuctionTime(item.tm);
         for (const item of list) {
+            const isAuction = isAuctionTime(item.tm);
             // 统一过滤，传入 isAuction 避免重复解析时间
             if (!shouldKeepChangeItem(item, isAuction)) continue;
 
             const code = item.c || '';
-
             if (isAuction) {
                 const key = makeChangeKey({
                     code,
