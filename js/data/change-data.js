@@ -149,7 +149,8 @@
                     });
                     if (!AppState.auctionSet.has(key)) {
                         AppState.auctionSet.add(key);
-                        AppState.persistentAuction.push(item);
+                        // ponytail: 接口按时间降序返回，新数据插到前面，渲染时无需再排序
+                        AppState.persistentAuction.unshift(item);
                         hasNewAuction = true;
                     }
                 }
@@ -176,13 +177,10 @@
                     StorageManager.saveAuctionData(AppState.persistentAuction);
                 }
 
-                let changes = AppState.intradayChanges;
-                changes = changes.concat(newIntradayItems);
-                changes.sort((a, b) => (b.tm || 0) - (a.tm || 0));
-                if (changes.length > CHANGE_API.maxChanges) {
-                    changes = changes.slice(0, CHANGE_API.maxChanges);
-                }
-                AppState.intradayChanges = changes;
+                // ponytail: 接口按时间降序返回，新数据 concat 在前面保持顺序，无需再 sort
+                AppState.intradayChanges = newIntradayItems.concat(
+                    AppState.intradayChanges
+                ).slice(0, CHANGE_API.maxChanges);
             }
 
             renderAllChanges();
@@ -193,9 +191,8 @@
      * 渲染所有异动列表
      */
     function renderAllChanges() {
-        const auctionItems = AppState.persistentAuction
-            .slice()
-            .sort((a, b) => (b.tm || 0) - (a.tm || 0));
+        // ponytail: 数据在 processChangeItems 中已按时间降序排列，渲染时无需再排序
+        const auctionItems = AppState.persistentAuction.slice();
 
         const intradayItems = AppState.intradayChanges.slice(0, CHANGE_API.maxIntradayItems);
 
