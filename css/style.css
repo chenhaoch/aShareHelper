@@ -139,7 +139,6 @@ body {
 .change-list {
     flex: 1;
     overflow-y: auto;
-    margin-top: 4px;
     padding-right: 4px;
     max-height: 430px;
 }
@@ -153,11 +152,11 @@ body {
 .change-item {
     display: flex;
     align-items: center;
-    padding: 3px 6px;
+    padding: 1px 4px;
     border-radius: 4px;
     font-size: 12px;
-    transition: background 0.15s;
-    border-bottom: 1px solid #f5f6f8;
+    /* transition: background 0.15s; */
+    border-bottom: 1px solid #e8e8e8;
     line-height: 1.4;
 }
 .change-item:hover {
@@ -300,7 +299,7 @@ body {
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     flex-shrink: 0;
     margin-left: 0;
     max-width: 500px;
