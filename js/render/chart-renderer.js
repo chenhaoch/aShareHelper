@@ -64,8 +64,8 @@
     const _dataCache = {};
 
     // ---- 常量 ----
-    const PAD = { top: 6, bottom: 4, left: 6, right: 6 };
-    const SUB_PAD = { top: 2, bottom: 12, left: 6, right: 6 };
+    const PAD = { top: 9, bottom: 2, left: 6, right: 6 };
+    const SUB_PAD = { top: 2, bottom: 2, left: 6, right: 6 };
 
     function getContainer(code) {
         return document.getElementById('chart_' + code);
@@ -434,16 +434,7 @@
             ctx.fillRect(x - barW / 2, top, barW, bottom - top);
         }
 
-        ctx.fillStyle = '#86909c';
-        ctx.font = '9px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        [diffMin, 0, diffMax].forEach(val => {
-            let label = formatAmount(Math.abs(val));
-            if (val < 0) label = '-' + label;
-            else if (val > 0) label = '+' + label;
-            ctx.fillText(label, SUB_PAD.left - 2, getY(val));
-        });
+        // ponytail: 不显示 Y 轴金额标签
     }
 
     // ---- 对外 API ----

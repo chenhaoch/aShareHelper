@@ -74,6 +74,14 @@
         updateClock();
         setInterval(updateClock, 1000);
 
+        // 13. 异动开关绑定
+        const toggleEl = document.getElementById('intradayToggle');
+        if (toggleEl) {
+            toggleEl.addEventListener('change', () => {
+                ChangeDataLoader.setEnabled(toggleEl.checked);
+            });
+        }
+
         console.log('[App] 初始化完成 ✓');
     }
 

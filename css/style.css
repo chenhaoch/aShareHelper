@@ -7,70 +7,160 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
     background: #f0f2f5;
     color: #1d2129;
-    padding: 8px 12px;
+    padding: 4px 8px;
     min-height: 100vh;
 }
 .app {
     max-width: 1600px;
     margin: 0 auto;
+    height: calc(100vh - 8px);
+    display: flex;
+    flex-direction: column;
 }
 .app-header {
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     padding: 0 2px;
+    flex-shrink: 0;
 }
 .app-header h1 {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.5px;
     color: #1d2129;
 }
 .app-header .time {
-    font-size: 13px;
+    font-size: 12px;
     color: #86909c;
-    margin-left: 10px;
+    margin-left: 6px;
     font-weight: 400;
 }
-.index-grid {
+
+/* ===== 三列布局 ===== */
+.main-layout {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+    background: #e0e0e0;
 }
-.index-card {
-    background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-    padding: 8px 10px 6px;
-    transition: box-shadow 0.2s;
+.main-layout > .layout-left {
+    border-right: 1px solid #e0e0e0;
+}
+.main-layout > .layout-middle {
+    border-right: 1px solid #e0e0e0;
+}
+.layout-left {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #fff;
+}
+.layout-left > * + * {
+    border-top: 1px solid #e0e0e0;
+}
+.layout-left .index-card {
+    flex: 1;
+    min-height: 0;
+}
+.layout-left .index-card .chart-container {
+    height: auto;
+    flex: 1;
+    min-height: 40px;
+}
+.layout-middle {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #fff;
+}
+.layout-middle > * + * {
+    border-top: 1px solid #e0e0e0;
+}
+.layout-middle .change-panel {
+    flex: 0 0 auto;
+    min-height: 0;
+}
+.layout-middle .index-card {
+    flex: 1;
+    min-height: 0;
+}
+.layout-middle .index-card .chart-container {
+    height: auto;
+    flex: 1;
+    min-height: 40px;
+}
+.layout-middle .zdt-chart {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    background: #fff;
+    min-height: 40px;
+}
+.layout-middle .zdfb-chart {
+    flex: 1;
+    overflow: hidden;
+    min-height: 40px;
+}
+#panelAuction {
+    height: 300px;
+}
+#panelZDFB {
+    height: 130px;
+}
+#panelZDT {
+    height: 130px;
+}
+.layout-right {
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
-.index-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+.layout-right .change-panel {
+    flex: 1;
+    min-height: 0;
+}
+.layout-right .change-list {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+}
+
+.index-card {
+    background: #ffffff;
+    /* padding: 2px 6px 2px; */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    height: 186px;
 }
 .index-card .card-header {
     display: flex;
     align-items: baseline;
-    margin-bottom: 3px;
     flex-shrink: 0;
-    gap: 8px;
+    gap: 4px;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    z-index: 2;
+    /* background: rgba(255,255,255,0.85); */
+    padding: 0 2px;
 }
 .index-card .card-header .name {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     color: #1d2129;
 }
 .index-card .card-header .sub {
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 400;
     color: #86909c;
 }
 .index-card .chart-container {
     width: 100%;
-    height: 200px;
-    flex-shrink: 0;
-    border-radius: 3px;
-    background: #fafafa;
+    flex: 1;
+    background: #fff;
     position: relative;
     overflow: hidden;
 }
@@ -80,82 +170,56 @@ body {
 .index-card .legend {
     display: none;
 }
-.change-area {
-    display: grid;
-    grid-template-columns: 1fr 3fr;
-    gap: 8px;
-}
-.change-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 0;
-}
-.change-main {
-    min-height: 0;
-}
+
+/* ===== 面板通用 ===== */
 .change-panel {
     background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-    padding: 6px 10px 4px;
+    /* padding: 2px 6px 1px; */
     display: flex;
     flex-direction: column;
 }
-#panelZDFB {
-    min-height: 130px;
-}
-#panelZDT {
-    min-height: 130px;
-}
-#panelAuction {
-    min-height: 140px;
-    flex: 1;
-}
-#panelIntraday {
-    min-height: 400px;
-    flex: 1;
-}
 .change-panel .panel-title {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     color: #1d2129;
     flex-shrink: 0;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #f0f0f0;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    padding: 2px;
+    line-height: 18px;
+    gap: 4px;
 }
 .change-panel .panel-title .badge {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 400;
     color: #86909c;
-    background: #f5f5f5;
-    padding: 0 8px;
-    border-radius: 8px;
-    line-height: 20px;
+    padding: 0 5px;
+    line-height: 16px;
+}
+#auctionCount,
+#intradayCount {
+    margin-left: auto;
 }
 .change-list {
     flex: 1;
     overflow-y: auto;
-    padding-right: 4px;
-    max-height: 430px;
+    padding-right: 2px;
 }
 .change-list::-webkit-scrollbar {
-    width: 4px;
+    width: 3px;
 }
 .change-list::-webkit-scrollbar-thumb {
     background: #d0d0d0;
-    border-radius: 4px;
+    border-radius: 2px;
 }
+
+/* ===== 异动条目 ===== */
 .change-item {
     display: flex;
     align-items: center;
     padding: 1px 4px;
     border-radius: 4px;
     font-size: 12px;
-    /* transition: background 0.15s; */
     border-bottom: 1px solid #e8e8e8;
     line-height: 1.4;
 }
@@ -256,9 +320,6 @@ body {
 .change-item .desc.down {
     color: #2d9b4e;
 }
-
-/* ===== 板块标签 ===== */
-/* 竞价项：上下两行布局，节约空间 */
 .change-item.auction-item {
     padding: 2px 4px;
     min-height: 34px;
@@ -295,6 +356,7 @@ body {
     font-size: 11px;
 }
 
+/* ===== 板块标签 ===== */
 .change-item .sector-tags {
     display: inline-flex;
     flex-wrap: wrap;
@@ -302,11 +364,10 @@ body {
     gap: 2px;
     flex-shrink: 0;
     margin-left: 0;
-    max-width: 500px;
+    max-width: 400px;
     overflow: hidden;
     vertical-align: middle;
 }
-/* 竞价列表（窄栏）允许板块标签换行显示 */
 #auctionList .change-item .sector-tags {
     max-width: 140px;
 }
@@ -314,20 +375,9 @@ body {
     font-size: 10px;
     padding: 1px 4px;
 }
-/* .change-item .sector-tag {
-    display: inline-block;
-    font-size: 10px;
-    line-height: 1;
-    padding: 1px 5px;
-    border-radius: 3px;
-    white-space: nowrap;
-    cursor: default;
-    transition: opacity 0.15s;
-} */
 .change-item .sector-tag:hover {
     opacity: 0.85;
 }
-/* 全局 .sector-tag 基础样式（让异动列表之外的标签也能复用 padding / border-radius 等） */
 .sector-tag {
     display: inline-block;
     font-size: 12px;
@@ -359,39 +409,38 @@ body {
     margin-left: 6px;
     flex-shrink: 0;
 }
+
 .zdfb-chart {
     flex: 1;
     overflow: hidden;
-    margin-top: 4px;
     min-height: 80px;
 }
 .zdt-chart {
     width: 100%;
     height: 100px;
     flex-shrink: 0;
-    border-radius: 3px;
-    background: #fafafa;
-    margin-top: 4px;
+    background: #fff;
 }
 .change-empty {
     color: #c9cdd4;
     text-align: center;
-    padding: 20px 0;
-    font-size: 13px;
+    padding: 12px 0;
+    font-size: 12px;
 }
+
 /* ===== header 导航链接 ===== */
 .app-header .header-links {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-left: 12px;
+    gap: 4px;
+    margin-left: 8px;
     font-size: 12px;
     font-weight: 400;
 }
 .app-header .header-links a {
     color: #86909c;
     text-decoration: none;
-    padding: 2px 8px;
+    padding: 1px 6px;
     border-radius: 4px;
     transition: background 0.15s, color 0.15s;
 }
@@ -411,6 +460,44 @@ body {
 .text-flat {
     color: #86909c;
 }
+
+/* ===== Toggle 开关 ===== */
+.toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+.toggle-label input[type="checkbox"] {
+    display: none;
+}
+.toggle-slider {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #c9cdd4;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+.toggle-label input:checked + .toggle-slider {
+    background: #1890ff;
+}
+.toggle-label input:checked + .toggle-slider::after {
+    transform: translateX(16px);
+}
+
 /* ===== sector-editor 页面专属样式 ===== */
 .editor-app { max-width: 1200px; margin: 0 auto; }
 .editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
@@ -456,7 +543,6 @@ body {
 .sector-table .action-cell { white-space: nowrap; }
 .sector-table .action-cell .btn { padding: 3px 10px; font-size: 11px; line-height: 1.4; }
 .sector-table .tag-list { margin-top: 0; min-height: 0; align-items: center; }
-/* 表格区域高度自适应，填满剩余视口 */
 .scrollable-table { overflow-y: auto; flex: 1; min-height: 0; }
 .editor-app { display: flex; flex-direction: column; height: 100vh; padding: 10px 12px; box-sizing: border-box; }
 body:has(.editor-app) { overflow: hidden; }
@@ -466,7 +552,6 @@ body:has(.editor-app) { overflow: hidden; }
 .search-bar input { flex: 1; padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 3px; font-size: 12px; outline: none; }
 .search-bar input:focus { border-color: #1890ff; }
 .empty-state { color: #c9cdd4; text-align: center; padding: 20px 0; font-size: 13px; }
-/* ===== 批量删除板块面板 ===== */
 .batch-delete-panel {
     background: #fff7f0;
     border: 1px solid #ffd9c2;
@@ -528,7 +613,6 @@ body:has(.editor-app) { overflow: hidden; }
     gap: 6px;
     margin-top: 6px;
 }
-/* ===== Toast 通知 ===== */
 .toast-container {
     position: fixed;
     top: 16px;
@@ -566,18 +650,14 @@ body:has(.editor-app) { overflow: hidden; }
 .toast-success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
 .toast-warning { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
 .toast-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
-@media (max-width: 800px) { .editor-grid { grid-template-columns: 1fr; } }
 
 @media (max-width: 1200px) {
-    .index-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    .change-area {
-        grid-template-columns: 1fr;
+    .main-layout {
+        grid-template-columns: 1fr 1fr;
     }
 }
 @media (max-width: 640px) {
-    .index-grid {
+    .main-layout {
         grid-template-columns: 1fr;
     }
     body {

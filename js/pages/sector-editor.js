@@ -16,6 +16,7 @@
 
     function init() {
         SectorData.initSectorData();
+        StorageManager.autoSaveSectors();
         document.getElementById('jiuyanDate').value = getLastTradingDay();
         bindEvents();
         refreshMaintainedList();
@@ -97,7 +98,6 @@
             codeCount++;
         }
 
-        StorageManager.saveAllSectors(AppState.sectorCache);
         const msg = '导入完成！' + codeCount + ' 个分类，' + matchCount + ' 条关系，' + importedCodes.size + ' 只个股';
         showResult('jiuyanResult', msg, 'success');
         refreshMaintainedList();
@@ -170,7 +170,7 @@
         // 使用 replaceSectors 保留已存在的来源信息（同花顺、韭研），新增的标为 manual
         SectorData.replaceSectors(_currentManualCode, sectors, stockName);
         showSaveMsg('已保存 ' + sectors.length + ' 个板块', '#52c41a');
-        refreshMaintainedList();
+        updateSingleRow(_currentManualCode);
     }
 
     function showSaveMsg(msg, color) {
@@ -182,6 +182,89 @@
     // ============================================================
     //  3. 已维护列表
     // ============================================================
+    // ponytail: 缓存行模板减少 DOM 创建开销
+    var _sectorTagTitle = { manual: '手动录入', jiuyan: '韭研公社', tonghuashun: '同花顺' };
+
+    function _buildRowTr(code) {
+        var cached = AppState.getSectorCache(code);
+        if (!cached) return null;
+        var tr = document.createElement('tr');
+        tr.dataset.code = code;
+        var tdCode = document.createElement('td');
+        tdCode.className = 'code-cell';
+        tdCode.textContent = code;
+        tr.appendChild(tdCode);
+        var tdName = document.createElement('td');
+        tdName.className = 'name-cell';
+        tdName.textContent = cached.stockName || '--';
+        tr.appendChild(tdName);
+        var tdSectors = document.createElement('td');
+        var tagContainer = document.createElement('div');
+        tagContainer.className = 'tag-list';
+        if (cached.sectors) {
+            for (var j = 0; j < cached.sectors.length; j++) {
+                var s = cached.sectors[j];
+                var tag = document.createElement('span');
+                tag.className = 'sector-tag ' + (s.source === 'more' ? 'more' : s.source);
+                tag.textContent = s.name;
+                tag.title = _sectorTagTitle[s.source] || s.source;
+                tagContainer.appendChild(tag);
+            }
+        }
+        tdSectors.appendChild(tagContainer);
+        tr.appendChild(tdSectors);
+        var tdTime = document.createElement('td');
+        tdTime.style.fontSize = '11px';
+        tdTime.style.color = '#86909c';
+        if (cached.updatedAt) {
+            tdTime.textContent = new Date(cached.updatedAt).toLocaleString('zh-CN', { hour12: false });
+        } else {
+            tdTime.textContent = '--';
+        }
+        tr.appendChild(tdTime);
+        var tdAction = document.createElement('td');
+        tdAction.className = 'action-cell';
+        var btnEdit = document.createElement('button');
+        btnEdit.className = 'btn btn-default';
+        btnEdit.textContent = '编辑';
+        btnEdit.style.marginRight = '3px';
+        btnEdit.addEventListener('click', function () { document.getElementById('manualCode').value = code; autoQuery(code); });
+        var btnDelete = document.createElement('button');
+        btnDelete.className = 'btn btn-danger';
+        btnDelete.textContent = '删除';
+        btnDelete.addEventListener('click', function () { if (confirm('确定删除 ' + code + ' 的板块数据？')) { SectorData.removeSectorCache(code); refreshMaintainedList(); } });
+        tdAction.appendChild(btnEdit);
+        tdAction.appendChild(btnDelete);
+        tr.appendChild(tdAction);
+        return tr;
+    }
+
+    /**
+     * 更新/插入单行 DOM，不清空重建全表
+     * @param {string} code - 标准化后的个股代码
+     */
+    function updateSingleRow(code) {
+        var tbody = document.getElementById('maintainedTbody');
+        if (!tbody) return;
+        var existing = tbody.querySelector('tr[data-code="' + code + '"]');
+        var newTr = _buildRowTr(code);
+        if (!newTr) {
+            if (existing) existing.remove();
+            return;
+        }
+        if (existing) {
+            existing.replaceWith(newTr);
+        } else {
+            tbody.appendChild(newTr);
+        }
+        // 更新计数
+        var rows = tbody.querySelectorAll('tr').length;
+        document.getElementById('maintainedCount').textContent = rows + ' 只';
+        var emptyEl = document.getElementById('maintainedEmpty');
+        emptyEl.style.display = rows === 0 ? 'block' : 'none';
+        document.getElementById('maintainedTableWrapper').style.display = rows === 0 ? 'none' : 'block';
+    }
+
     function refreshMaintainedList() {
         var searchText = document.getElementById('searchMaintained').value.trim().toLowerCase();
         var codes = SectorData.getAllCachedCodes();
@@ -211,60 +294,8 @@
         document.getElementById('maintainedCount').textContent = filtered.length + ' 只';
         var fragment = document.createDocumentFragment();
         for (var i = 0; i < filtered.length; i++) {
-            (function (code) {
-                var cached = AppState.getSectorCache(code);
-                if (!cached) return;
-                var tr = document.createElement('tr');
-                var tdCode = document.createElement('td');
-                tdCode.className = 'code-cell';
-                tdCode.textContent = code;
-                tr.appendChild(tdCode);
-                var tdName = document.createElement('td');
-                tdName.className = 'name-cell';
-                tdName.textContent = cached.stockName || '--';
-                tr.appendChild(tdName);
-                var tdSectors = document.createElement('td');
-                var tagContainer = document.createElement('div');
-                tagContainer.className = 'tag-list';
-                if (cached.sectors) {
-                    for (var j = 0; j < cached.sectors.length; j++) {
-                        var s = cached.sectors[j];
-                        var tag = document.createElement('span');
-                        tag.className = 'sector-tag ' + (s.source === 'more' ? 'more' : s.source);
-                        tag.textContent = s.name;
-                        if (s.source === 'manual') tag.title = '手动录入';
-                        else if (s.source === 'jiuyan') tag.title = '韭研公社';
-                        else if (s.source === 'tonghuashun') tag.title = '同花顺';
-                        tagContainer.appendChild(tag);
-                    }
-                }
-                tdSectors.appendChild(tagContainer);
-                tr.appendChild(tdSectors);
-                var tdTime = document.createElement('td');
-                tdTime.style.fontSize = '11px';
-                tdTime.style.color = '#86909c';
-                if (cached.updatedAt) {
-                    tdTime.textContent = new Date(cached.updatedAt).toLocaleString('zh-CN', { hour12: false });
-                } else {
-                    tdTime.textContent = '--';
-                }
-                tr.appendChild(tdTime);
-                var tdAction = document.createElement('td');
-                tdAction.className = 'action-cell';
-                var btnEdit = document.createElement('button');
-                btnEdit.className = 'btn btn-default';
-                btnEdit.textContent = '编辑';
-                btnEdit.style.marginRight = '3px';
-                btnEdit.addEventListener('click', function () { document.getElementById('manualCode').value = code; autoQuery(code); });
-                var btnDelete = document.createElement('button');
-                btnDelete.className = 'btn btn-danger';
-                btnDelete.textContent = '删除';
-                btnDelete.addEventListener('click', function () { if (confirm('确定删除 ' + code + ' 的板块数据？')) { SectorData.removeSectorCache(code); refreshMaintainedList(); } });
-                tdAction.appendChild(btnEdit);
-                tdAction.appendChild(btnDelete);
-                tr.appendChild(tdAction);
-                fragment.appendChild(tr);
-            })(filtered[i]);
+            var tr = _buildRowTr(filtered[i]);
+            if (tr) fragment.appendChild(tr);
         }
         tbody.appendChild(fragment);
     }

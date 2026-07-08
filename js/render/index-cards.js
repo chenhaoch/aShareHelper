@@ -28,11 +28,11 @@
                 subEl.textContent = '';
             }
         } else if (info.price != null && info.prePrice > 0) {
-            // 指数显示价格 + 涨跌幅
+            // ponytail: 只显示点数xxx(+xx%)
             const sign = info.change >= 0 ? '+' : '';
             const cls = info.change >= 0 ? 'text-up' : 'text-down';
             subEl.innerHTML =
-                `<span class="${cls}">${info.price.toFixed(2)} ${sign}${info.change.toFixed(2)} (${sign}${info.changePct.toFixed(2)}%)</span>`;
+                `<span class="${cls}">${info.price.toFixed(2)} (${sign}${info.changePct.toFixed(2)}%)</span>`;
         } else if (info.price != null) {
             subEl.textContent = info.price.toFixed(2);
         } else {

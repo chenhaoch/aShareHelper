@@ -8,7 +8,7 @@
     'use strict';
 
     /** 同花顺板块缓存 TTL（7天） */
-    const THS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+    const THS_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
 
     /** 最大显示板块数 */
     const MAX_SECTOR_DISPLAY = 6;

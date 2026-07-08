@@ -12,6 +12,8 @@
     let _firstRequest = true;
     /** 竞价数据是否已保存（盘中数据首次到达时保存一次） */
     let _auctionSavedOnce = false;
+    /** 异动开关（关闭后不再请求数据，保留已有列表） */
+    let _enabled = true;
 
     /**
      * 判断当前是否在交易时段内
@@ -115,10 +117,12 @@
     /**
      * 加载异动数据
      */
-    async function loadChanges(pageindex=0) {
+    async function loadChanges() {
+        if (!_enabled) return; // ponytail: 开关关闭后不再请求
+
         // 首次请求不受交易时段限制（确保开盘前能获取竞价数据）
         // 之后的轮询只在交易时段内发送
-        if (!_firstRequest && !isTradingTime() && pageindex==0) return;
+        if (!_firstRequest && !isTradingTime()) return;
 
         if (_isPolling) return; // 防抖：上次请求未完成跳过
         _isPolling = true;
@@ -127,7 +131,7 @@
         const cb = `jQuery_${t}`;
         const url =
             `${CHANGE_API.baseUrl}?type=${CHANGE_API.types}&cb=${cb}` +
-            `&pageindex=${pageindex || 0}&pagesize=${CHANGE_API.pagesize}` +
+            `&pageindex=0&pagesize=${CHANGE_API.pagesize}` +
             `&dpt=${CHANGE_API.dpt}&ut=${CHANGE_API.ut}&_=${t}`;
 
         try {
@@ -249,5 +253,17 @@
         },
 
         loadOnce: loadChanges,
+
+        /** 设置异动开关 */
+        setEnabled(v) {
+            _enabled = v;
+            if (v) {
+                // ponytail: 重新开启时立即恢复轮询
+                _firstRequest = true; // 允许立即触发一次
+                loadChanges();
+            } else {
+                // ponytail: 关闭时只停请求，不清空已有列表
+            }
+        },
     };
 })();
