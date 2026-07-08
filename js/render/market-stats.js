@@ -29,7 +29,7 @@
         container.innerHTML = '';
 
         const w = container.clientWidth || 400;
-        const h = 100;
+        const h = container.clientHeight || 100;
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
@@ -47,7 +47,7 @@
         // ponytail: 移除 X 轴标签空间，柱状图撑满
         const padLeft = 0;
         const padRight = 0;
-        const padBottom = 4;
+        const padBottom = 0;
         const chartW = w - padLeft - padRight;
         const chartH = h - padBottom;
 
@@ -170,7 +170,7 @@
 
         ctx.clearRect(0, 0, w, h);
 
-        const pad = { top: 6, bottom: 16, left: 6, right: 6 };
+        const pad = { top: 0, bottom: 0, left: 6, right: 6 };
         const chartW = w - pad.left - pad.right;
         const chartH = h - pad.top - pad.bottom;
         if (chartW <= 0 || chartH <= 0) return;
@@ -245,8 +245,6 @@
 
         drawLine(ztStr, '#e5474a');
         drawLine(dtStr, '#2d9b4e');
-
-        // ponytail: 移除端点圆点，纯折线图
     }
 
     function renderZDT(data) {

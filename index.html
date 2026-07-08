@@ -17,51 +17,46 @@
             </h1>
         </header>
 
-        <div class="index-grid" id="indexGrid">
-            <div class="index-card" data-code="000001">
-                <div class="card-header">
-                    <span class="name">上证指数</span>
-                    <span class="sub" id="sub_000001"></span>
-                </div>
-                <div class="chart-container" id="chart_000001"></div>
-                <div class="legend"></div>
-            </div>
-            <div class="index-card" data-code="399006">
-                <div class="card-header">
-                    <span class="name">创业板指</span>
-                    <span class="sub" id="sub_399006"></span>
-                </div>
-                <div class="chart-container" id="chart_399006"></div>
-                <div class="legend"></div>
-            </div>
-            <div class="index-card" data-code="000688">
-                <div class="card-header">
-                    <span class="name">科创50</span>
-                    <span class="sub" id="sub_000688"></span>
-                </div>
-                <div class="chart-container" id="chart_000688"></div>
-                <div class="legend"></div>
-            </div>
-            <div class="index-card" data-code="800004">
-                <div class="card-header">
-                    <span class="name" id="name_800004">全A成交额</span>
-                    <span class="sub" id="sub_800004"></span>
-                </div>
-                <div class="chart-container" id="chart_800004"></div>
-                <div class="legend"></div>
-            </div>
-        </div>
+        <div class="main-layout">
 
-        <div class="change-area">
-            <div class="change-sidebar">
-                <div class="change-panel" id="panelZDFB">
-                    <div class="panel-title" id="zdfbTitle">📊 涨跌分布</div>
-                    <div class="zdfb-chart" id="zdfbChart"></div>
+            <!-- 左列：4个指数 -->
+            <div class="layout-left">
+                <div class="index-card" data-code="000001">
+                    <div class="card-header">
+                        <span class="name">上证指数</span>
+                        <span class="sub" id="sub_000001"></span>
+                    </div>
+                    <div class="chart-container" id="chart_000001"></div>
+                    <div class="legend"></div>
                 </div>
-                <div class="change-panel" id="panelZDT">
-                    <div class="panel-title" id="zdtTitle">📈 涨跌停趋势</div>
-                    <div class="zdt-chart" id="zdtChart"></div>
+                <div class="index-card" data-code="399006">
+                    <div class="card-header">
+                        <span class="name">创业板指</span>
+                        <span class="sub" id="sub_399006"></span>
+                    </div>
+                    <div class="chart-container" id="chart_399006"></div>
+                    <div class="legend"></div>
                 </div>
+                <div class="index-card" data-code="000688">
+                    <div class="card-header">
+                        <span class="name">科创50</span>
+                        <span class="sub" id="sub_000688"></span>
+                    </div>
+                    <div class="chart-container" id="chart_000688"></div>
+                    <div class="legend"></div>
+                </div>
+                <div class="index-card" data-code="159740">
+                    <div class="card-header">
+                        <span class="name">恒生科技</span>
+                        <span class="sub" id="sub_159740"></span>
+                    </div>
+                    <div class="chart-container" id="chart_159740"></div>
+                    <div class="legend"></div>
+                </div>
+            </div>
+
+            <!-- 中列：竞价 + 涨跌分布 + 涨跌停趋势 + 全A成交额 -->
+            <div class="layout-middle">
                 <div class="change-panel" id="panelAuction">
                     <div class="panel-title">
                         <span>🔥 竞价</span>
@@ -71,11 +66,33 @@
                         <div class="change-empty">暂无竞价数据</div>
                     </div>
                 </div>
+                <div class="change-panel" id="panelZDFB">
+                    <div class="panel-title" id="zdfbTitle">📊 涨跌分布</div>
+                    <div class="zdfb-chart" id="zdfbChart"></div>
+                </div>
+                <div class="change-panel" id="panelZDT">
+                    <div class="panel-title" id="zdtTitle">📈 涨跌停趋势</div>
+                    <div class="zdt-chart" id="zdtChart"></div>
+                </div>
+                <div class="index-card" data-code="800004">
+                    <div class="card-header">
+                        <span class="name" id="name_800004">全A成交额</span>
+                        <span class="sub" id="sub_800004"></span>
+                    </div>
+                    <div class="chart-container" id="chart_800004"></div>
+                    <div class="legend"></div>
+                </div>
             </div>
-            <div class="change-main">
+
+            <!-- 右列：盘中异动 + 开关 -->
+            <div class="layout-right">
                 <div class="change-panel" id="panelIntraday">
                     <div class="panel-title">
-                        <span>⚡ 盘中异动</span>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="intradayToggle" checked>
+                            <span class="toggle-slider"></span>
+                            <span>⚡ 盘中异动</span>
+                        </label>
                         <span class="badge" id="intradayCount">0 条</span>
                     </div>
                     <div class="change-list" id="intradayList">
@@ -83,6 +100,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 

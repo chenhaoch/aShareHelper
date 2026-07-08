@@ -14,6 +14,7 @@ const INDEX_CONFIG = {
     '000001': { name: '上证指数', color: '#1890ff', secId: '1.000001', ndays: 1, isAmount: false },
     '399006': { name: '创业板指', color: '#1890ff', secId: '0.399006', ndays: 1, isAmount: false },
     '000688': { name: '科创50',   color: '#1890ff', secId: '1.000688', ndays: 1, isAmount: false },
+    '159740': { name: '恒生科技', color: '#1890ff', secId: '0.159740', ndays: 1, isAmount: false },
     '800004': { name: '全A成交额', color: '#1890ff', secId: '47.800004', ndays: 2, isAmount: true },
 };
 
