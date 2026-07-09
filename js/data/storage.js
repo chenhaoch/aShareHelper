@@ -84,19 +84,13 @@
      */
     function restoreAuctionData() {
         const auctionData = loadAuctionData();
-        if (auctionData.length > 0) {
-            const existing = new Set();
-            for (const item of AppState.persistentAuction) {
-                const key = `${item.c || ''}_${item.tm || ''}`;
-                existing.add(key);
-            }
-            for (const item of auctionData) {
-                const key = `${item.c || ''}_${item.tm || ''}`;
-                if (!existing.has(key)) {
-                    AppState.auctionSet.add(key);
-                    AppState.persistentAuction.push(item);
-                    existing.add(key);
-                }
+        for (const item of auctionData) {
+            const key = `${item.c || ''}_${item.tm || ''}`;
+            // ponytail: init 时 persistentAuction 必定为空，直接判断 auctionSet 防重复
+            if (!AppState.auctionSet.has(key)) {
+                AppState.auctionSet.add(key);
+                // ponytail: unshift 保持一致（新数据在前），渲染时无需再排序
+                AppState.persistentAuction.unshift(item);
             }
         }
     }
