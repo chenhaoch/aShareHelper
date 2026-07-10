@@ -226,6 +226,21 @@ body {
 .change-item:hover {
     background: #f7f8fa;
 }
+.change-item .info-row {
+    display: flex;
+    align-items: center;
+}
+.change-item .sector-tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: 0;
+    max-width: 400px;
+    overflow: hidden;
+    vertical-align: middle;
+}
 .change-item .time {
     color: #86909c;
     font-size: 11px;
@@ -323,7 +338,6 @@ body {
 .change-item.auction-item {
     padding: 2px 4px;
     min-height: 34px;
-    align-items: center;
 }
 .change-item.auction-item .name-stack {
     display: flex;
@@ -357,17 +371,6 @@ body {
 }
 
 /* ===== 板块标签 ===== */
-.change-item .sector-tags {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2px;
-    flex-shrink: 0;
-    margin-left: 0;
-    max-width: 400px;
-    overflow: hidden;
-    vertical-align: middle;
-}
 #auctionList .change-item .sector-tags {
     max-width: 140px;
 }
@@ -662,5 +665,133 @@ body:has(.editor-app) { overflow: hidden; }
     }
     body {
         padding: 6px;
+        font-size: 12px;
+    }
+
+    /* 指数区 2×2 网格 */
+    .layout-left {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .layout-left > * + * {
+        border-top: none;
+    }
+    .layout-left .index-card {
+        height: 140px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .layout-left .index-card:nth-child(odd) {
+        border-right: 1px solid #e0e0e0;
+    }
+    .layout-left .index-card:nth-last-child(-n+2) {
+        border-bottom: none;
+    }
+    .layout-left .index-card .chart-container {
+        min-height: 30px;
+    }
+
+    /* 中间列：竞价/涨跌停隐藏，涨跌分布 + 全A成交额左右排列 */
+    #panelAuction {
+        display: none;
+    }
+    #panelZDT {
+        display: none;
+    }
+    .layout-middle {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .layout-middle > * + * {
+        border-top: none;
+    }
+    #panelZDFB {
+        height: 140px;
+        flex: 1 1 50%;
+        min-width: 0;
+        border-top: 1px solid #e0e0e0;
+    }
+    .layout-middle .index-card {
+        height: 140px;
+        flex: 1 1 50%;
+        min-width: 0;
+        border-left: 1px solid #e0e0e0;
+        border-top: 1px solid #e0e0e0;
+    }
+    .layout-middle .index-card .chart-container {
+        min-height: 30px;
+    }
+
+    /* Header 精简 */
+    .app-header h1 {
+        font-size: 13px;
+    }
+    .app-header .header-links a {
+        font-size: 11px;
+        padding: 1px 4px;
+    }
+
+    /* 异动条目：两行布局（板块标签换到第二行） */
+    .change-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 2px 4px;
+        font-size: 11px;
+    }
+    .change-item .info-row {
+        display: flex;
+        align-items: center;
+        min-height: 22px;
+    }
+    .change-item .sector-tags {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 2px;
+        padding: 1px 0 0 0;
+        max-width: none;
+        overflow: visible;
+        margin-left: 0;
+    }
+    .change-item.auction-item {
+        align-items: normal;
+    }
+    .change-item.auction-item .info-row {
+        align-items: center;
+        min-height: 28px;
+    }
+    .change-item .time {
+        font-size: 10px;
+        width: 44px;
+    }
+    .change-item .name {
+        width: 48px;
+    }
+    .change-item .code {
+        font-size: 10px;
+        width: 44px;
+    }
+    .change-item .type-name {
+        width: 48px;
+    }
+    .change-item .desc {
+        width: 72px;
+        flex: 0 0 72px;
+    }
+
+    /* 竞价条目适配 */
+    .change-item.auction-item .desc {
+        width: 60px;
+        flex: 0 0 60px;
+    }
+    #auctionList .change-item .sector-tags {
+        max-width: 80px;
+    }
+
+    .zdfb-chart {
+        min-height: 60px;
+    }
+    .zdt-chart {
+        height: 70px;
     }
 }

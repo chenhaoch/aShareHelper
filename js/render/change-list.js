@@ -14,6 +14,7 @@
             const div = document.createElement('div');
             div.className = 'change-item';
             div.innerHTML =
+                '<div class="info-row">' +
                 '<span class="time"></span>' +
                 '<span class="type-indicator"></span>' +
                 '<span class="name-stack">' +
@@ -22,6 +23,7 @@
                 '</span>' +
                 '<span class="type-name"></span>' +
                 '<span class="desc"></span>' +
+                '</div>' +
                 '<span class="sector-tags"></span>';
             _changeItemProto = div;
         }
@@ -32,6 +34,7 @@
         const div = document.createElement('div');
         div.className = 'change-item auction-item';
         div.innerHTML =
+            '<div class="info-row">' +
             '<span class="time"></span>' +
             '<span class="type-indicator"></span>' +
             '<span class="name-stack">' +
@@ -39,6 +42,7 @@
             '  <span class="code"></span>' +
             '</span>' +
             '<span class="desc"></span>' +
+            '</div>' +
             '<span class="sector-tags"></span>';
         return div;
     }
