@@ -20,6 +20,14 @@
         document.getElementById('jiuyanDate').value = getLastTradingDay();
         bindEvents();
         refreshMaintainedList();
+
+        // 关闭页面前强制保存板块数据，不依赖5分钟间隔
+        window.addEventListener('beforeunload', function () {
+            StorageManager.saveAllSectors(AppState.sectorCache);
+        });
+
+        // 批量删除板块后刷新列表
+        EventBus.on('sector:batch-cleaned', refreshMaintainedList);
     }
 
     function bindEvents() {
