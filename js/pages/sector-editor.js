@@ -32,12 +32,12 @@
 
     function bindEvents() {
         document.getElementById('btnParseJiuyan').addEventListener('click', parseJiuyanJson);
-        document.getElementById('manualCode').addEventListener('input', function (e) {
+        document.getElementById('manualCode').addEventListener('input', debounce(function (e) {
             const raw = e.target.value.replace(/^(sh|sz|bj)/i, '').replace(/\D/g, '');
             if (raw.length === 6) autoQuery(raw);
-        });
+        }, 300));
         document.getElementById('btnSaveManual').addEventListener('click', saveManualSectors);
-        document.getElementById('searchMaintained').addEventListener('input', refreshMaintainedList);
+        document.getElementById('searchMaintained').addEventListener('input', debounce(refreshMaintainedList, 300));
         document.getElementById('btnRefreshList').addEventListener('click', refreshMaintainedList);
         document.getElementById('btnBatchDelete').addEventListener('click', function () {
             document.getElementById('batchDeletePanel').style.display = 'block';
