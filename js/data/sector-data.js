@@ -61,7 +61,7 @@
             name: item.name || '',
             source: 'tonghuashun',
             weight: item.weight || 0,  // ponytail: 无 weight 默认为 0
-        })).filter(item => item.name && SECTOR_ALLOW_SET.has(item.name));
+        })).filter(item => item.name && !SECTOR_ALLOW_SET.has(item.name));
     }
 
     /**
